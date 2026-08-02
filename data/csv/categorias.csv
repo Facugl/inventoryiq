@@ -1,0 +1,15 @@
+categoria_id,nombre,categoria_padre_id,umbral_max_cobertura_dias,dias_cobertura_extra_default
+1,Almacén Frío,,20.0,4.0
+2,Lácteos,1,12.0,3.0
+3,Fiambres y Quesos,1,10.0,3.0
+4,Bebidas,,20.0,4.0
+5,Bebidas sin Alcohol,4,25.0,4.0
+6,Bebidas con Alcohol,4,35.0,5.0
+7,Almacén Seco,,20.0,4.0
+8,Panificados,7,8.0,2.0
+9,Snacks y Golosinas,7,30.0,5.0
+10,Limpieza,,45.0,7.0
+11,Perfumería,,40.0,6.0
+12,Congelados,,20.0,4.0
+13,Verdulería,,6.0,2.0
+14,Carnicería,,7.0,2.0

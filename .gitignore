@@ -1,0 +1,64 @@
+# ==============================
+# Backend (Java / Maven)
+# ==============================
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+HELP.md
+
+# ==============================
+# Frontend (Node / Vite / React)
+# ==============================
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+frontend/*.local
+
+# ==============================
+# ETL (Python) - por si se crea más adelante
+# ==============================
+etl/__pycache__/
+etl/**/__pycache__/
+etl/.venv/
+etl/venv/
+etl/*.egg-info/
+etl/.pytest_cache/
+
+# ==============================
+# Variables de entorno y secretos
+# ==============================
+.env
+.env.*
+!.env.example
+
+# ==============================
+# Logs
+# ==============================
+*.log
+logs/
+
+# ==============================
+# Docker
+# ==============================
+# (no se ignoran los Dockerfile ni docker-compose.yml, solo datos runtime)
+
+# ==============================
+# IDEs y editores
+# ==============================
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.swp
+*.swo
+
+# ==============================
+# Sistema operativo
+# ==============================
+.DS_Store
+Thumbs.db
+desktop.ini

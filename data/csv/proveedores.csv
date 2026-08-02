@@ -1,0 +1,11 @@
+proveedor_id,razon_social,lead_time_promedio_dias,condicion_pago,activo
+1,Lácteos del Sur S.A.,3,30 días,True
+2,Distribuidora Bebidas Cuyo S.R.L.,5,15 días,True
+3,Molinos del Litoral S.A.,4,30 días,True
+4,Snacks Express S.A.,2,Contado,True
+5,Química Higiene S.R.L.,7,45 días,True
+6,Perfumería Andina S.A.,6,30 días,True
+7,Frigorífico Patagonia S.A.,5,30 días,True
+8,Mercado Central Verdulería,1,Contado,True
+9,Carnes Premium S.A.,2,15 días,True
+10,Fiambrería San Justo S.R.L.,4,30 días,False

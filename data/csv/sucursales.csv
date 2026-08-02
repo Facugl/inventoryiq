@@ -1,0 +1,4 @@
+sucursal_id,nombre,direccion,activa
+1,Sucursal Centro,"Av. San Martín 1450, Santiago del Estero",True
+2,Sucursal Norte,"Ruta 9 Km 3.5, Santiago del Estero",True
+3,Sucursal Sur,"Av. Belgrano Sur 890, Santiago del Estero",True
