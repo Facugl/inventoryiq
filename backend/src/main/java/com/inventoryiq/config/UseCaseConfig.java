@@ -1,11 +1,13 @@
 package com.inventoryiq.config;
 
+import com.inventoryiq.application.port.in.ClassifyProductsUseCase;
 import com.inventoryiq.application.port.in.DetectOverstockUseCase;
 import com.inventoryiq.application.port.in.GetCriticalProductsUseCase;
 import com.inventoryiq.application.port.out.CategoryRepository;
 import com.inventoryiq.application.port.out.InventoryRepository;
 import com.inventoryiq.application.port.out.ProductRepository;
 import com.inventoryiq.application.port.out.SaleRepository;
+import com.inventoryiq.application.usecase.ClassifyProductsService;
 import com.inventoryiq.application.usecase.DetectOverstockService;
 import com.inventoryiq.application.usecase.GetCriticalProductsService;
 import com.inventoryiq.domain.service.CriticalityEvaluator;
@@ -45,5 +47,13 @@ public class UseCaseConfig {
 			SaleRepository saleRepository,
 			InventoryRepository inventoryRepository) {
 		return new DetectOverstockService(productRepository, categoryRepository, saleRepository, inventoryRepository);
+	}
+
+	@Bean
+	public ClassifyProductsUseCase classifyProductsUseCase(
+			ProductRepository productRepository,
+			SaleRepository saleRepository,
+			InventoryRepository inventoryRepository) {
+		return new ClassifyProductsService(productRepository, saleRepository, inventoryRepository);
 	}
 }
