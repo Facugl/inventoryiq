@@ -7,25 +7,14 @@ import com.inventoryiq.application.port.out.CategoryRepository;
 import com.inventoryiq.application.port.out.InventoryRepository;
 import com.inventoryiq.application.port.out.ProductRepository;
 import com.inventoryiq.application.port.out.SaleRepository;
-import com.inventoryiq.domain.exception.InvalidDomainDataException;
+import com.inventoryiq.application.usecase.shared.ProductIndicatorsCalculator;
 import com.inventoryiq.domain.model.AbcClassification;
-import com.inventoryiq.domain.model.Category;
-import com.inventoryiq.domain.model.Inventory;
 import com.inventoryiq.domain.model.Product;
 import com.inventoryiq.domain.model.ProductStatus;
 import com.inventoryiq.domain.model.Sale;
 import com.inventoryiq.domain.model.vo.CriticalityLevel;
-import com.inventoryiq.domain.model.vo.DailySalesRecord;
-import com.inventoryiq.domain.model.vo.ReorderPoint;
-import com.inventoryiq.domain.model.vo.SafetyStock;
 import com.inventoryiq.domain.service.AbcClassifier;
-import com.inventoryiq.domain.service.AdsCalculator;
 import com.inventoryiq.domain.service.CriticalityEvaluator;
-import com.inventoryiq.domain.service.DailySalesRecordAssembler;
-import com.inventoryiq.domain.service.OverstockDetector;
-import com.inventoryiq.domain.service.ProductStatusEvaluator;
-import com.inventoryiq.domain.service.ReorderPointCalculator;
-import com.inventoryiq.domain.service.SafetyStockCalculator;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -44,22 +33,20 @@ import java.util.stream.Collectors;
  * 2. Clasifica ABC el catálogo del scope UNA sola vez (AbcClassifier necesita
  *    el valor de venta de todo el conjunto para calcular el acumulado Pareto,
  *    no se puede calcular producto por producto).
- * 3. Para cada producto: arma la serie de ventas diarias (DailySalesRecordAssembler),
- *    calcula ADS corregido, stock de seguridad, punto de pedido, cobertura
- *    actual y estado. Si el estado no es CRITICAL ni REQUIRES_REPLENISHMENT,
- *    el producto se descarta (fuera del alcance de este caso de uso).
- *    Si no hay historial suficiente para calcular ADS, o no hay snapshot de
- *    inventario, o la categoría del producto no existe, el producto se
- *    descarta de forma aislada: un dato incompleto de un producto no debe
- *    tirar abajo el cálculo del resto del catálogo.
+ * 3. Para cada producto: ProductIndicatorsCalculator calcula ADS corregido,
+ *    stock de seguridad, punto de pedido, cobertura actual y estado (lógica
+ *    compartida con DetectOverstockUseCase). Si el estado no es CRITICAL ni
+ *    REQUIRES_REPLENISHMENT, el producto se descarta (fuera del alcance de
+ *    este caso de uso). ProductIndicatorsCalculator ya descarta por su cuenta
+ *    los productos con datos incompletos (sin historial de ventas, sin
+ *    snapshot de inventario o con categoría inexistente).
  * 4. Ordena por score de criticidad descendente y trunca por límite si corresponde.
  */
 public class GetCriticalProductsService implements GetCriticalProductsUseCase {
 
 	private final ProductRepository productRepository;
-	private final CategoryRepository categoryRepository;
 	private final SaleRepository saleRepository;
-	private final InventoryRepository inventoryRepository;
+	private final ProductIndicatorsCalculator productIndicatorsCalculator;
 	private final CriticalityEvaluator.CriticalityWeights criticalityWeights;
 
 	public GetCriticalProductsService(
@@ -69,9 +56,8 @@ public class GetCriticalProductsService implements GetCriticalProductsUseCase {
 			InventoryRepository inventoryRepository,
 			CriticalityEvaluator.CriticalityWeights criticalityWeights) {
 		this.productRepository = productRepository;
-		this.categoryRepository = categoryRepository;
 		this.saleRepository = saleRepository;
-		this.inventoryRepository = inventoryRepository;
+		this.productIndicatorsCalculator = new ProductIndicatorsCalculator(categoryRepository, inventoryRepository);
 		this.criticalityWeights = criticalityWeights;
 	}
 
@@ -124,53 +110,26 @@ public class GetCriticalProductsService implements GetCriticalProductsUseCase {
 			Product product, GetCriticalProductsQuery query, LocalDate windowStart, List<Sale> sales,
 			Map<Long, AbcClassification> abcByProduct) {
 
-		// findLatestSnapshotAsOf (más abajo) se mantiene como una consulta
-		// independiente de este rango, a propósito: busca el snapshot vigente
-		// más reciente en el historial completo, no solo dentro de la ventana
-		// de ventas. Son alcances distintos (ventana acotada vs. búsqueda sin
-		// límite hacia atrás), así que no es la misma consulta duplicada.
-		List<Inventory> snapshots = inventoryRepository.findSnapshotsInRange(
-				product.productId(), query.storeId(), windowStart.minusDays(1), query.referenceDate());
-		List<DailySalesRecord> dailyRecords = DailySalesRecordAssembler.assemble(sales, snapshots);
-
-		double ads;
-		try {
-			ads = AdsCalculator.calculateCorrectedAds(dailyRecords);
-		} catch (InvalidDomainDataException e) {
-			return Optional.empty(); // sin historial suficiente para evaluar este producto
+		Optional<ProductIndicatorsCalculator.ProductIndicators> indicators = productIndicatorsCalculator.calculate(
+				product, query.storeId(), windowStart, query.referenceDate(), sales);
+		if (indicators.isEmpty()) {
+			return Optional.empty();
 		}
+		ProductIndicatorsCalculator.ProductIndicators productIndicators = indicators.get();
 
-		Optional<Inventory> latestSnapshot = inventoryRepository.findLatestSnapshotAsOf(
-				product.productId(), query.storeId(), query.referenceDate());
-		if (latestSnapshot.isEmpty()) {
-			return Optional.empty(); // sin stock registrado en esta sucursal
-		}
-
-		Optional<Category> category = categoryRepository.findById(product.categoryId());
-		if (category.isEmpty()) {
-			return Optional.empty(); // integridad referencial rota: producto con categoría inexistente
-		}
-
-		int currentStock = latestSnapshot.get().currentStock();
-
-		SafetyStock safetyStock = SafetyStockCalculator.calculateSimplifiedMethod(ads, category.get().defaultExtraCoverageDays());
-		ReorderPoint reorderPoint = ReorderPointCalculator.calculate(ads, product.leadTime(), safetyStock);
-		double currentDaysOfCoverage = OverstockDetector.calculateCurrentDaysOfCoverage(currentStock, ads);
-
-		ProductStatus status = ProductStatusEvaluator.evaluate(new ProductStatusEvaluator.EvaluationContext(
-				currentStock, reorderPoint, safetyStock, currentDaysOfCoverage,
-				category.get().maxCoverageDaysThreshold(), false));
-
-		if (status != ProductStatus.CRITICAL && status != ProductStatus.REQUIRES_REPLENISHMENT) {
+		if (productIndicators.status() != ProductStatus.CRITICAL
+				&& productIndicators.status() != ProductStatus.REQUIRES_REPLENISHMENT) {
 			return Optional.empty();
 		}
 
 		AbcClassification abcClass = abcByProduct.getOrDefault(product.productId(), AbcClassification.C);
 		CriticalityLevel criticality = CriticalityEvaluator.calculate(
-				abcClass, currentDaysOfCoverage, product.leadTime(), currentStock == 0, criticalityWeights);
+				abcClass, productIndicators.currentDaysOfCoverage(), product.leadTime(),
+				productIndicators.currentStock() == 0, criticalityWeights);
 
 		return Optional.of(new CriticalProductResult(
 				product.productId(), product.sku(), product.name(), query.storeId(), product.categoryId(),
-				currentStock, reorderPoint, currentDaysOfCoverage, status, criticality));
+				productIndicators.currentStock(), productIndicators.reorderPoint(),
+				productIndicators.currentDaysOfCoverage(), productIndicators.status(), criticality));
 	}
 }

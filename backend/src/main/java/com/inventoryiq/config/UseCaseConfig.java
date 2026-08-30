@@ -1,10 +1,12 @@
 package com.inventoryiq.config;
 
+import com.inventoryiq.application.port.in.DetectOverstockUseCase;
 import com.inventoryiq.application.port.in.GetCriticalProductsUseCase;
 import com.inventoryiq.application.port.out.CategoryRepository;
 import com.inventoryiq.application.port.out.InventoryRepository;
 import com.inventoryiq.application.port.out.ProductRepository;
 import com.inventoryiq.application.port.out.SaleRepository;
+import com.inventoryiq.application.usecase.DetectOverstockService;
 import com.inventoryiq.application.usecase.GetCriticalProductsService;
 import com.inventoryiq.domain.service.CriticalityEvaluator;
 import org.springframework.context.annotation.Bean;
@@ -34,5 +36,14 @@ public class UseCaseConfig {
 			CriticalityEvaluator.CriticalityWeights criticalityWeights) {
 		return new GetCriticalProductsService(
 				productRepository, categoryRepository, saleRepository, inventoryRepository, criticalityWeights);
+	}
+
+	@Bean
+	public DetectOverstockUseCase detectOverstockUseCase(
+			ProductRepository productRepository,
+			CategoryRepository categoryRepository,
+			SaleRepository saleRepository,
+			InventoryRepository inventoryRepository) {
+		return new DetectOverstockService(productRepository, categoryRepository, saleRepository, inventoryRepository);
 	}
 }
