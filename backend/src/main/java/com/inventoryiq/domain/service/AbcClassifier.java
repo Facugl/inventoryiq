@@ -17,6 +17,17 @@ import java.util.Map;
  * Umbrales usados: A hasta 80% acumulado, B hasta 95% acumulado, C el resto
  * (el documento define A=80% pero no fija dónde termina B; 95% es una
  * convención estándar de curva ABC que se documenta acá para poder ajustarla).
+ *
+ * La clasificación de cada producto usa el porcentaje acumulado ANTES de
+ * sumar su propio valor (no después): un producto pertenece a la clase A
+ * si, sin contarlo a él, el acumulado todavía no llegó al 80% — es decir,
+ * es uno de los productos que construyen ese 80%, incluyendo el que
+ * termina de cruzarlo. Esto importa especialmente en el caso extremo de
+ * un único producto que por sí solo ya representa más del 80% del valor
+ * total: sigue siendo A (es, por definición, el de mayor contribución),
+ * no C. Clasificarlo usando el acumulado DESPUÉS de sumarlo lo mandaría a
+ * C ("baja contribución"), lo cual contradice directamente la Sección 4.7
+ * ("C: productos de baja contribución") para el producto que más aporta.
  */
 public final class AbcClassifier {
 	private static final BigDecimal THRESHOLD_A = new BigDecimal("0.80");
@@ -51,18 +62,19 @@ public final class AbcClassifier {
 
 		BigDecimal accumulated = BigDecimal.ZERO;
 		for (SalesValueByProduct v : sorted) {
-			accumulated = accumulated.add(v.salesValue());
-			BigDecimal accumulatedPercentage = accumulated.divide(total, 6, RoundingMode.HALF_UP);
+			BigDecimal accumulatedPercentageBefore = accumulated.divide(total, 6, RoundingMode.HALF_UP);
 
 			AbcClassification category;
-			if (accumulatedPercentage.compareTo(THRESHOLD_A) <= 0) {
+			if (accumulatedPercentageBefore.compareTo(THRESHOLD_A) < 0) {
 				category = AbcClassification.A;
-			} else if (accumulatedPercentage.compareTo(THRESHOLD_B) <= 0) {
+			} else if (accumulatedPercentageBefore.compareTo(THRESHOLD_B) < 0) {
 				category = AbcClassification.B;
 			} else {
 				category = AbcClassification.C;
 			}
 			result.put(v.productId(), category);
+
+			accumulated = accumulated.add(v.salesValue());
 		}
 		return result;
 	}
