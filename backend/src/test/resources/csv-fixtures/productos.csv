@@ -1,0 +1,4 @@
+producto_id,sku,nombre,categoria_id,proveedor_id,unidad_medida,precio_costo,precio_venta,lead_time_dias,activo
+1001,LEC-1001,Leche Entera 1L,2,1,UN,458.37,624.53,4,True
+1002,LEC-1002,Leche Descremada 1L,2,1,UN,444.69,631.36,2,True
+1099,INA-1099,Producto Inactivo,2,1,UN,100.00,150.00,3,False

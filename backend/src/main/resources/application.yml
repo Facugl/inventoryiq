@@ -1,1 +1,12 @@
-spring.application.name=backend
+spring:
+  application:
+    name: backend
+
+# Ruta base donde viven los 8 CSV simulados (Sección 5 de la documentación).
+# En local (mvn test / mvn spring-boot:run desde backend/), el default resuelve
+# relativo al módulo backend hacia data/csv en la raíz del repo.
+# En Docker, docker-compose.yml sobreescribe esto con INVENTORYIQ_CSV_BASE_PATH
+# apuntando al volumen montado en /app/data/csv (ver docker-compose.yml).
+inventoryiq:
+  csv:
+    base-path: ${INVENTORYIQ_CSV_BASE_PATH:../data/csv}

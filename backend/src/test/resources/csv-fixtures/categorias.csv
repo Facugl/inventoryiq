@@ -1,0 +1,3 @@
+categoria_id,nombre,categoria_padre_id,umbral_max_cobertura_dias,dias_cobertura_extra_default
+1,Almacén Frío,,20.0,4.0
+2,Lácteos,1,12.0,3.0
