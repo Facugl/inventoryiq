@@ -1,0 +1,38 @@
+package com.inventoryiq.config;
+
+import com.inventoryiq.application.port.in.GetCriticalProductsUseCase;
+import com.inventoryiq.application.port.out.CategoryRepository;
+import com.inventoryiq.application.port.out.InventoryRepository;
+import com.inventoryiq.application.port.out.ProductRepository;
+import com.inventoryiq.application.port.out.SaleRepository;
+import com.inventoryiq.application.usecase.GetCriticalProductsService;
+import com.inventoryiq.domain.service.CriticalityEvaluator;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+/** Wiring de los casos de uso de aplicación. */
+@Configuration
+public class UseCaseConfig {
+
+	/**
+	 * Default MVP acordado en el cierre del Vertical Slice 1: pesos iguales
+	 * (1/3 cada uno). No se externaliza a application.yml todavía — sigue
+	 * siendo una configuración deliberadamente simple, fuera de alcance de
+	 * este slice.
+	 */
+	@Bean
+	public CriticalityEvaluator.CriticalityWeights criticalityWeights() {
+		return new CriticalityEvaluator.CriticalityWeights(1.0 / 3, 1.0 / 3, 1.0 / 3);
+	}
+
+	@Bean
+	public GetCriticalProductsUseCase getCriticalProductsUseCase(
+			ProductRepository productRepository,
+			CategoryRepository categoryRepository,
+			SaleRepository saleRepository,
+			InventoryRepository inventoryRepository,
+			CriticalityEvaluator.CriticalityWeights criticalityWeights) {
+		return new GetCriticalProductsService(
+				productRepository, categoryRepository, saleRepository, inventoryRepository, criticalityWeights);
+	}
+}
