@@ -2,6 +2,7 @@ package com.inventoryiq.config;
 
 import com.inventoryiq.application.port.in.ClassifyProductsUseCase;
 import com.inventoryiq.application.port.in.DetectOverstockUseCase;
+import com.inventoryiq.application.port.in.GenerateAlertsUseCase;
 import com.inventoryiq.application.port.in.GetCriticalProductsUseCase;
 import com.inventoryiq.application.port.out.CategoryRepository;
 import com.inventoryiq.application.port.out.InventoryRepository;
@@ -9,6 +10,7 @@ import com.inventoryiq.application.port.out.ProductRepository;
 import com.inventoryiq.application.port.out.SaleRepository;
 import com.inventoryiq.application.usecase.ClassifyProductsService;
 import com.inventoryiq.application.usecase.DetectOverstockService;
+import com.inventoryiq.application.usecase.GenerateAlertsService;
 import com.inventoryiq.application.usecase.GetCriticalProductsService;
 import com.inventoryiq.domain.service.CriticalityEvaluator;
 import org.springframework.context.annotation.Bean;
@@ -55,5 +57,12 @@ public class UseCaseConfig {
 			SaleRepository saleRepository,
 			InventoryRepository inventoryRepository) {
 		return new ClassifyProductsService(productRepository, saleRepository, inventoryRepository);
+	}
+
+	@Bean
+	public GenerateAlertsUseCase generateAlertsUseCase(
+			GetCriticalProductsUseCase getCriticalProductsUseCase,
+			DetectOverstockUseCase detectOverstockUseCase) {
+		return new GenerateAlertsService(getCriticalProductsUseCase, detectOverstockUseCase);
 	}
 }
