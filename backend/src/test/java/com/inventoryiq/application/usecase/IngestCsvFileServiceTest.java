@@ -244,6 +244,11 @@ class IngestCsvFileServiceTest {
 		public Optional<Store> findById(Long storeId) {
 			return Optional.ofNullable(stores.get(storeId));
 		}
+
+		@Override
+		public List<Store> findAllActive() {
+			return stores.values().stream().filter(Store::active).toList();
+		}
 	}
 
 	private static class FakeSaleIngestionRepository implements SaleIngestionRepository {

@@ -10,3 +10,6 @@ spring:
 inventoryiq:
   csv:
     base-path: ${INVENTORYIQ_CSV_BASE_PATH:../data/csv}
+  scheduling:
+    # Sección 9.10 — job programado de recálculo de estado de producto. Diario a las 02:00 por defecto.
+    recalculate-product-status-cron: ${INVENTORYIQ_RECALCULATE_PRODUCT_STATUS_CRON:0 0 2 * * *}
