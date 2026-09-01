@@ -2,6 +2,7 @@ package com.inventoryiq.config;
 
 import com.inventoryiq.application.port.in.ClassifyProductsUseCase;
 import com.inventoryiq.application.port.in.DetectOverstockUseCase;
+import com.inventoryiq.application.port.in.ForecastDemandUseCase;
 import com.inventoryiq.application.port.in.GenerateAlertsUseCase;
 import com.inventoryiq.application.port.in.GenerateReorderSuggestionsUseCase;
 import com.inventoryiq.application.port.in.GetCriticalProductsUseCase;
@@ -11,6 +12,7 @@ import com.inventoryiq.application.port.out.ProductRepository;
 import com.inventoryiq.application.port.out.SaleRepository;
 import com.inventoryiq.application.usecase.ClassifyProductsService;
 import com.inventoryiq.application.usecase.DetectOverstockService;
+import com.inventoryiq.application.usecase.ForecastDemandService;
 import com.inventoryiq.application.usecase.GenerateAlertsService;
 import com.inventoryiq.application.usecase.GenerateReorderSuggestionsService;
 import com.inventoryiq.application.usecase.GetCriticalProductsService;
@@ -75,5 +77,13 @@ public class UseCaseConfig {
 			SaleRepository saleRepository,
 			InventoryRepository inventoryRepository) {
 		return new GenerateReorderSuggestionsService(productRepository, categoryRepository, saleRepository, inventoryRepository);
+	}
+
+	@Bean
+	public ForecastDemandUseCase forecastDemandUseCase(
+			ProductRepository productRepository,
+			SaleRepository saleRepository,
+			InventoryRepository inventoryRepository) {
+		return new ForecastDemandService(productRepository, saleRepository, inventoryRepository);
 	}
 }
