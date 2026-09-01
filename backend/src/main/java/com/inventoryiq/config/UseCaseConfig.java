@@ -3,6 +3,7 @@ package com.inventoryiq.config;
 import com.inventoryiq.application.port.in.ClassifyProductsUseCase;
 import com.inventoryiq.application.port.in.DetectOverstockUseCase;
 import com.inventoryiq.application.port.in.GenerateAlertsUseCase;
+import com.inventoryiq.application.port.in.GenerateReorderSuggestionsUseCase;
 import com.inventoryiq.application.port.in.GetCriticalProductsUseCase;
 import com.inventoryiq.application.port.out.CategoryRepository;
 import com.inventoryiq.application.port.out.InventoryRepository;
@@ -11,6 +12,7 @@ import com.inventoryiq.application.port.out.SaleRepository;
 import com.inventoryiq.application.usecase.ClassifyProductsService;
 import com.inventoryiq.application.usecase.DetectOverstockService;
 import com.inventoryiq.application.usecase.GenerateAlertsService;
+import com.inventoryiq.application.usecase.GenerateReorderSuggestionsService;
 import com.inventoryiq.application.usecase.GetCriticalProductsService;
 import com.inventoryiq.domain.service.CriticalityEvaluator;
 import org.springframework.context.annotation.Bean;
@@ -64,5 +66,14 @@ public class UseCaseConfig {
 			GetCriticalProductsUseCase getCriticalProductsUseCase,
 			DetectOverstockUseCase detectOverstockUseCase) {
 		return new GenerateAlertsService(getCriticalProductsUseCase, detectOverstockUseCase);
+	}
+
+	@Bean
+	public GenerateReorderSuggestionsUseCase generateReorderSuggestionsUseCase(
+			ProductRepository productRepository,
+			CategoryRepository categoryRepository,
+			SaleRepository saleRepository,
+			InventoryRepository inventoryRepository) {
+		return new GenerateReorderSuggestionsService(productRepository, categoryRepository, saleRepository, inventoryRepository);
 	}
 }
