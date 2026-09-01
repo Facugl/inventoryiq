@@ -1,5 +1,6 @@
 package com.inventoryiq.adapters.in.rest;
 
+import com.inventoryiq.domain.exception.CsvIngestionThresholdExceededException;
 import com.inventoryiq.domain.exception.InvalidDomainDataException;
 import com.inventoryiq.domain.exception.NotFoundException;
 import jakarta.validation.ConstraintViolationException;
@@ -30,6 +31,16 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(NotFoundException.class)
 	public ProblemDetail handleNotFound(NotFoundException ex) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+	}
+
+	@ExceptionHandler(CsvIngestionThresholdExceededException.class)
+	public ProblemDetail handleCsvIngestionThresholdExceeded(CsvIngestionThresholdExceededException ex) {
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage());
+		problem.setProperty("totalRowsRead", ex.getTotalRowsRead());
+		problem.setProperty("rejectedCount", ex.getRejectedCount());
+		problem.setProperty("rejectionRatePercent", ex.getRejectionRatePercent());
+		problem.setProperty("rejections", ex.getRejections());
+		return problem;
 	}
 
 	@ExceptionHandler(ConstraintViolationException.class)

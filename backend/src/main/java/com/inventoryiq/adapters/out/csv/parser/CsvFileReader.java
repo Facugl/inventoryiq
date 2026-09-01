@@ -9,7 +9,9 @@ import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Lee un archivo CSV con header por nombre de columna (robusto a que las
@@ -22,16 +24,27 @@ public final class CsvFileReader {
 	}
 
 	public static List<CSVRecord> readRecords(Path filePath) {
+		try (Reader reader = Files.newBufferedReader(filePath, StandardCharsets.UTF_8)) {
+			return readContent(reader).records();
+		} catch (IOException e) {
+			throw new IllegalStateException("Failed to read CSV file: " + filePath, e);
+		}
+	}
+
+	/** Header + filas de una fuente que no es un archivo en disco (por ejemplo, un CSV subido por HTTP). */
+	public static CsvContent readContent(Reader reader) {
 		CSVFormat format = CSVFormat.DEFAULT.builder()
 				.setHeader()
 				.setSkipHeaderRecord(true)
 				.build();
 
-		try (Reader reader = Files.newBufferedReader(filePath, StandardCharsets.UTF_8);
-				CSVParser parser = format.parse(reader)) {
-			return parser.getRecords();
+		try (CSVParser parser = format.parse(reader)) {
+			return new CsvContent(new LinkedHashSet<>(parser.getHeaderNames()), parser.getRecords());
 		} catch (IOException e) {
-			throw new IllegalStateException("Failed to read CSV file: " + filePath, e);
+			throw new IllegalStateException("Failed to parse CSV content", e);
 		}
+	}
+
+	public record CsvContent(Set<String> headerColumns, List<CSVRecord> records) {
 	}
 }

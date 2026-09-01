@@ -7,6 +7,7 @@ import com.inventoryiq.application.port.in.ForecastDemandUseCase;
 import com.inventoryiq.application.port.in.GenerateAlertsUseCase;
 import com.inventoryiq.application.port.in.GenerateReorderSuggestionsUseCase;
 import com.inventoryiq.application.port.in.GetCriticalProductsUseCase;
+import com.inventoryiq.application.port.in.IngestCsvFileUseCase;
 import com.inventoryiq.application.port.in.ListRecommendationsUseCase;
 import com.inventoryiq.application.port.in.RecalculateRecommendationsUseCase;
 import com.inventoryiq.application.port.in.RegisterRecommendationFeedbackUseCase;
@@ -14,7 +15,9 @@ import com.inventoryiq.application.port.out.CategoryRepository;
 import com.inventoryiq.application.port.out.InventoryRepository;
 import com.inventoryiq.application.port.out.ProductRepository;
 import com.inventoryiq.application.port.out.RecommendationRepository;
+import com.inventoryiq.application.port.out.SaleIngestionRepository;
 import com.inventoryiq.application.port.out.SaleRepository;
+import com.inventoryiq.application.port.out.StoreRepository;
 import com.inventoryiq.application.usecase.CalculateInventoryKPIsService;
 import com.inventoryiq.application.usecase.ClassifyProductsService;
 import com.inventoryiq.application.usecase.DetectOverstockService;
@@ -22,6 +25,7 @@ import com.inventoryiq.application.usecase.ForecastDemandService;
 import com.inventoryiq.application.usecase.GenerateAlertsService;
 import com.inventoryiq.application.usecase.GenerateReorderSuggestionsService;
 import com.inventoryiq.application.usecase.GetCriticalProductsService;
+import com.inventoryiq.application.usecase.IngestCsvFileService;
 import com.inventoryiq.application.usecase.ListRecommendationsService;
 import com.inventoryiq.application.usecase.RecalculateRecommendationsService;
 import com.inventoryiq.application.usecase.RegisterRecommendationFeedbackService;
@@ -125,5 +129,11 @@ public class UseCaseConfig {
 		return new CalculateInventoryKPIsService(
 				productRepository, categoryRepository, saleRepository, inventoryRepository,
 				detectOverstockUseCase, recommendationRepository);
+	}
+
+	@Bean
+	public IngestCsvFileUseCase ingestCsvFileUseCase(
+			ProductRepository productRepository, StoreRepository storeRepository, SaleIngestionRepository saleIngestionRepository) {
+		return new IngestCsvFileService(productRepository, storeRepository, saleIngestionRepository);
 	}
 }
