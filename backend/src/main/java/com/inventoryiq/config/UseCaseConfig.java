@@ -1,5 +1,6 @@
 package com.inventoryiq.config;
 
+import com.inventoryiq.application.port.in.CalculateInventoryKPIsUseCase;
 import com.inventoryiq.application.port.in.ClassifyProductsUseCase;
 import com.inventoryiq.application.port.in.DetectOverstockUseCase;
 import com.inventoryiq.application.port.in.ForecastDemandUseCase;
@@ -14,6 +15,7 @@ import com.inventoryiq.application.port.out.InventoryRepository;
 import com.inventoryiq.application.port.out.ProductRepository;
 import com.inventoryiq.application.port.out.RecommendationRepository;
 import com.inventoryiq.application.port.out.SaleRepository;
+import com.inventoryiq.application.usecase.CalculateInventoryKPIsService;
 import com.inventoryiq.application.usecase.ClassifyProductsService;
 import com.inventoryiq.application.usecase.DetectOverstockService;
 import com.inventoryiq.application.usecase.ForecastDemandService;
@@ -110,5 +112,18 @@ public class UseCaseConfig {
 	public RegisterRecommendationFeedbackUseCase registerRecommendationFeedbackUseCase(
 			RecommendationRepository recommendationRepository, ProductRepository productRepository) {
 		return new RegisterRecommendationFeedbackService(recommendationRepository, productRepository);
+	}
+
+	@Bean
+	public CalculateInventoryKPIsUseCase calculateInventoryKPIsUseCase(
+			ProductRepository productRepository,
+			CategoryRepository categoryRepository,
+			SaleRepository saleRepository,
+			InventoryRepository inventoryRepository,
+			DetectOverstockUseCase detectOverstockUseCase,
+			RecommendationRepository recommendationRepository) {
+		return new CalculateInventoryKPIsService(
+				productRepository, categoryRepository, saleRepository, inventoryRepository,
+				detectOverstockUseCase, recommendationRepository);
 	}
 }

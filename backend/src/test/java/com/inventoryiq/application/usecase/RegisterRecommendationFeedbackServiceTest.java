@@ -89,11 +89,15 @@ class RegisterRecommendationFeedbackServiceTest {
 		}
 
 		@Override
-		public List<Recommendation> findByFilters(Long storeId, Long supplierId, RecommendationStatus status) {
+		public List<Recommendation> findByFilters(
+				Long storeId, Long supplierId, RecommendationStatus status,
+				LocalDate generationDateFrom, LocalDate generationDateTo) {
 			return recommendations.values().stream()
 					.filter(r -> r.storeId().equals(storeId))
 					.filter(r -> supplierId == null || supplierId.equals(r.supplierId()))
 					.filter(r -> status == null || status == r.status())
+					.filter(r -> generationDateFrom == null || !r.generationDate().isBefore(generationDateFrom))
+					.filter(r -> generationDateTo == null || !r.generationDate().isAfter(generationDateTo))
 					.toList();
 		}
 	}

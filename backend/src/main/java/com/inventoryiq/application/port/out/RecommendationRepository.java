@@ -3,6 +3,7 @@ package com.inventoryiq.application.port.out;
 import com.inventoryiq.domain.model.Recommendation;
 import com.inventoryiq.domain.model.RecommendationStatus;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,6 +19,12 @@ public interface RecommendationRepository {
 
 	Optional<Recommendation> findById(Long recommendationId);
 
-	/** supplierId y status son opcionales (null = sin filtrar por ese criterio). */
-	List<Recommendation> findByFilters(Long storeId, Long supplierId, RecommendationStatus status);
+	/**
+	 * supplierId, status y el rango [generationDateFrom, generationDateTo]
+	 * son opcionales (null = sin filtrar por ese criterio; el rango se
+	 * evalúa contra Recommendation.generationDate).
+	 */
+	List<Recommendation> findByFilters(
+			Long storeId, Long supplierId, RecommendationStatus status,
+			LocalDate generationDateFrom, LocalDate generationDateTo);
 }

@@ -86,16 +86,31 @@ class PostgresRecommendationRepositoryAdapterTest {
 		Recommendation other = adapter.save(pending(null, 1002L, 9L, 50)); // store 1, supplier 9, PENDING
 		adapter.save(other.withFeedback(RecommendationStatus.DISCARDED, "no aplica", LocalDate.parse("2026-08-03")));
 
-		List<Recommendation> allForStore = adapter.findByFilters(1L, null, null);
+		List<Recommendation> allForStore = adapter.findByFilters(1L, null, null, null, null);
 		assertEquals(2, allForStore.size()); // el discard actualizó 1002 in place, no insertó una fila nueva
 
-		List<Recommendation> bySupplier = adapter.findByFilters(1L, 5L, null);
+		List<Recommendation> bySupplier = adapter.findByFilters(1L, 5L, null, null, null);
 		assertEquals(1, bySupplier.size());
 		assertEquals(1001L, bySupplier.get(0).productId());
 
-		List<Recommendation> byStatus = adapter.findByFilters(1L, null, RecommendationStatus.DISCARDED);
+		List<Recommendation> byStatus = adapter.findByFilters(1L, null, RecommendationStatus.DISCARDED, null, null);
 		assertEquals(1, byStatus.size());
 		assertEquals(1002L, byStatus.get(0).productId());
+	}
+
+	@Test
+	void findByFiltersAppliesTheGenerationDateRange() {
+		Recommendation early = adapter.save(new Recommendation(null, 2001L, 1L, 5L, 10, LocalDate.parse("2026-08-10"),
+				"justificación", RecommendationStatus.PENDING, LocalDate.parse("2026-07-01"), null, null));
+		Recommendation late = adapter.save(new Recommendation(null, 2002L, 1L, 5L, 20, LocalDate.parse("2026-08-10"),
+				"justificación", RecommendationStatus.PENDING, LocalDate.parse("2026-08-15"), null, null));
+
+		List<Recommendation> inRange = adapter.findByFilters(
+				1L, null, null, LocalDate.parse("2026-07-01"), LocalDate.parse("2026-07-31"));
+
+		assertEquals(1, inRange.size());
+		assertEquals(early.recommendationId(), inRange.get(0).recommendationId());
+		assertTrue(inRange.stream().noneMatch(r -> r.recommendationId().equals(late.recommendationId())));
 	}
 
 	private static Recommendation pending(Long id, Long productId, Long supplierId, int suggestedQuantity) {
