@@ -4,10 +4,13 @@ import com.inventoryiq.adapters.out.csv.CsvCategoryRepositoryAdapter;
 import com.inventoryiq.adapters.out.csv.CsvInventoryRepositoryAdapter;
 import com.inventoryiq.adapters.out.csv.CsvProductRepositoryAdapter;
 import com.inventoryiq.adapters.out.csv.CsvSaleRepositoryAdapter;
+import com.inventoryiq.adapters.out.csv.CsvStoreRepositoryAdapter;
 import com.inventoryiq.application.port.out.CategoryRepository;
 import com.inventoryiq.application.port.out.InventoryRepository;
 import com.inventoryiq.application.port.out.ProductRepository;
+import com.inventoryiq.application.port.out.SaleIngestionRepository;
 import com.inventoryiq.application.port.out.SaleRepository;
+import com.inventoryiq.application.port.out.StoreRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -35,13 +38,35 @@ public class CsvAdaptersConfig {
 		return new CsvCategoryRepositoryAdapter(Path.of(csvDataProperties.getBasePath()));
 	}
 
+	/**
+	 * CsvSaleRepositoryAdapter implementa SaleRepository (lectura) y
+	 * SaleIngestionRepository (escritura, Sección 9.9) sobre el mismo
+	 * índice en memoria — se construye una única vez acá y se expone bajo
+	 * los dos puertos, para que una fila ingerida por uno sea visible de
+	 * inmediato a través del otro.
+	 */
 	@Bean
-	public SaleRepository saleRepository(CsvDataProperties csvDataProperties) {
+	public CsvSaleRepositoryAdapter csvSaleRepositoryAdapter(CsvDataProperties csvDataProperties) {
 		return new CsvSaleRepositoryAdapter(Path.of(csvDataProperties.getBasePath()));
+	}
+
+	@Bean
+	public SaleRepository saleRepository(CsvSaleRepositoryAdapter csvSaleRepositoryAdapter) {
+		return csvSaleRepositoryAdapter;
+	}
+
+	@Bean
+	public SaleIngestionRepository saleIngestionRepository(CsvSaleRepositoryAdapter csvSaleRepositoryAdapter) {
+		return csvSaleRepositoryAdapter;
 	}
 
 	@Bean
 	public InventoryRepository inventoryRepository(CsvDataProperties csvDataProperties) {
 		return new CsvInventoryRepositoryAdapter(Path.of(csvDataProperties.getBasePath()));
+	}
+
+	@Bean
+	public StoreRepository storeRepository(CsvDataProperties csvDataProperties) {
+		return new CsvStoreRepositoryAdapter(Path.of(csvDataProperties.getBasePath()));
 	}
 }
