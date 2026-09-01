@@ -4,6 +4,7 @@ import com.inventoryiq.domain.model.Store;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -39,5 +40,16 @@ class CsvStoreRepositoryAdapterTest {
 		var adapter = new CsvStoreRepositoryAdapter(FIXTURES_PATH);
 
 		assertTrue(adapter.findById(9999L).isEmpty());
+	}
+
+	@Test
+	void findAllActiveExcludesInactiveStores() {
+		var adapter = new CsvStoreRepositoryAdapter(FIXTURES_PATH);
+
+		List<Store> active = adapter.findAllActive();
+
+		assertEquals(2, active.size());
+		assertTrue(active.stream().allMatch(Store::active));
+		assertTrue(active.stream().noneMatch(s -> s.storeId().equals(3L)));
 	}
 }

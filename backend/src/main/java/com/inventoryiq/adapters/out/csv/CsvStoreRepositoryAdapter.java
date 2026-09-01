@@ -31,6 +31,11 @@ public class CsvStoreRepositoryAdapter implements StoreRepository {
 		return Optional.ofNullable(storesById.get(storeId));
 	}
 
+	@Override
+	public List<Store> findAllActive() {
+		return storesById.values().stream().filter(Store::active).toList();
+	}
+
 	private static Store toStore(CSVRecord record) {
 		return new Store(
 				CsvFieldParsers.parseLong(record.get("sucursal_id")),

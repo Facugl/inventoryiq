@@ -9,6 +9,7 @@ import com.inventoryiq.application.port.in.GenerateReorderSuggestionsUseCase;
 import com.inventoryiq.application.port.in.GetCriticalProductsUseCase;
 import com.inventoryiq.application.port.in.IngestCsvFileUseCase;
 import com.inventoryiq.application.port.in.ListRecommendationsUseCase;
+import com.inventoryiq.application.port.in.RecalculateProductStatusUseCase;
 import com.inventoryiq.application.port.in.RecalculateRecommendationsUseCase;
 import com.inventoryiq.application.port.in.RegisterRecommendationFeedbackUseCase;
 import com.inventoryiq.application.port.out.CategoryRepository;
@@ -27,6 +28,7 @@ import com.inventoryiq.application.usecase.GenerateReorderSuggestionsService;
 import com.inventoryiq.application.usecase.GetCriticalProductsService;
 import com.inventoryiq.application.usecase.IngestCsvFileService;
 import com.inventoryiq.application.usecase.ListRecommendationsService;
+import com.inventoryiq.application.usecase.RecalculateProductStatusService;
 import com.inventoryiq.application.usecase.RecalculateRecommendationsService;
 import com.inventoryiq.application.usecase.RegisterRecommendationFeedbackService;
 import com.inventoryiq.domain.service.CriticalityEvaluator;
@@ -135,5 +137,17 @@ public class UseCaseConfig {
 	public IngestCsvFileUseCase ingestCsvFileUseCase(
 			ProductRepository productRepository, StoreRepository storeRepository, SaleIngestionRepository saleIngestionRepository) {
 		return new IngestCsvFileService(productRepository, storeRepository, saleIngestionRepository);
+	}
+
+	@Bean
+	public RecalculateProductStatusUseCase recalculateProductStatusUseCase(
+			StoreRepository storeRepository,
+			GetCriticalProductsUseCase getCriticalProductsUseCase,
+			DetectOverstockUseCase detectOverstockUseCase,
+			RecalculateRecommendationsUseCase recalculateRecommendationsUseCase,
+			GenerateAlertsUseCase generateAlertsUseCase) {
+		return new RecalculateProductStatusService(
+				storeRepository, getCriticalProductsUseCase, detectOverstockUseCase,
+				recalculateRecommendationsUseCase, generateAlertsUseCase);
 	}
 }
