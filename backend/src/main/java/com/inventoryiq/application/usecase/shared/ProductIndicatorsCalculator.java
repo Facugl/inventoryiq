@@ -46,6 +46,7 @@ public class ProductIndicatorsCalculator {
 
 	public record ProductIndicators(
 			int currentStock,
+			int stockInTransit,
 			double ads,
 			SafetyStock safetyStock,
 			ReorderPoint reorderPoint,
@@ -91,6 +92,7 @@ public class ProductIndicatorsCalculator {
 		}
 
 		int currentStock = latestSnapshot.get().currentStock();
+		int stockInTransit = latestSnapshot.get().stockInTransit();
 
 		SafetyStock safetyStock = SafetyStockCalculator.calculateSimplifiedMethod(ads, category.get().defaultExtraCoverageDays());
 		ReorderPoint reorderPoint = ReorderPointCalculator.calculate(ads, product.leadTime(), safetyStock);
@@ -100,6 +102,7 @@ public class ProductIndicatorsCalculator {
 				currentStock, reorderPoint, safetyStock, currentDaysOfCoverage,
 				category.get().maxCoverageDaysThreshold(), false));
 
-		return Optional.of(new ProductIndicators(currentStock, ads, safetyStock, reorderPoint, currentDaysOfCoverage, status));
+		return Optional.of(new ProductIndicators(
+				currentStock, stockInTransit, ads, safetyStock, reorderPoint, currentDaysOfCoverage, status));
 	}
 }
