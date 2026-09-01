@@ -54,7 +54,7 @@ public class RecalculateRecommendationsService implements RecalculateRecommendat
 		List<ReorderSuggestionResult> freshSuggestions = generateReorderSuggestionsUseCase.execute(
 				new GenerateReorderSuggestionsQuery(command.storeId(), null, null, command.referenceDate()));
 
-		List<Recommendation> existingForStore = recommendationRepository.findByFilters(command.storeId(), null, null);
+		List<Recommendation> existingForStore = recommendationRepository.findByFilters(command.storeId(), null, null, null, null);
 
 		Map<Long, Recommendation> pendingByProductId = new HashMap<>();
 		Set<Long> resolvedTodayProductIds = new HashSet<>();

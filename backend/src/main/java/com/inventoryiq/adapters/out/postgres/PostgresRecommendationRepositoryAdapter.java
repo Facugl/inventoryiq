@@ -8,6 +8,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 
 import java.sql.Date;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -89,7 +90,9 @@ public class PostgresRecommendationRepositoryAdapter implements RecommendationRe
 	}
 
 	@Override
-	public List<Recommendation> findByFilters(Long storeId, Long supplierId, RecommendationStatus status) {
+	public List<Recommendation> findByFilters(
+			Long storeId, Long supplierId, RecommendationStatus status,
+			LocalDate generationDateFrom, LocalDate generationDateTo) {
 		StringBuilder sql = new StringBuilder("SELECT * FROM recommendations WHERE store_id = ?");
 		List<Object> params = new ArrayList<>();
 		params.add(storeId);
@@ -101,6 +104,14 @@ public class PostgresRecommendationRepositoryAdapter implements RecommendationRe
 		if (status != null) {
 			sql.append(" AND status = ?");
 			params.add(status.name());
+		}
+		if (generationDateFrom != null) {
+			sql.append(" AND generation_date >= ?");
+			params.add(Date.valueOf(generationDateFrom));
+		}
+		if (generationDateTo != null) {
+			sql.append(" AND generation_date <= ?");
+			params.add(Date.valueOf(generationDateTo));
 		}
 
 		return jdbcTemplate.query(sql.toString(), ROW_MAPPER, params.toArray());

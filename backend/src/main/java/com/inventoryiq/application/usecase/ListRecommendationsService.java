@@ -34,7 +34,7 @@ public class ListRecommendationsService implements ListRecommendationsUseCase {
 
 	@Override
 	public List<RecommendationResult> execute(ListRecommendationsQuery query) {
-		return recommendationRepository.findByFilters(query.storeId(), query.supplierId(), query.status()).stream()
+		return recommendationRepository.findByFilters(query.storeId(), query.supplierId(), query.status(), null, null).stream()
 				.flatMap(recommendation -> toResult(recommendation).stream())
 				.filter(result -> query.categoryId() == null || query.categoryId().equals(result.categoryId()))
 				.toList();
