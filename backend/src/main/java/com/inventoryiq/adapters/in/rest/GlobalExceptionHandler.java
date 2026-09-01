@@ -1,6 +1,7 @@
 package com.inventoryiq.adapters.in.rest;
 
 import com.inventoryiq.domain.exception.InvalidDomainDataException;
+import com.inventoryiq.domain.exception.ProductNotFoundException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -24,6 +25,11 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(InvalidDomainDataException.class)
 	public ProblemDetail handleInvalidDomainData(InvalidDomainDataException ex) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+	}
+
+	@ExceptionHandler(ProductNotFoundException.class)
+	public ProblemDetail handleProductNotFound(ProductNotFoundException ex) {
+		return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
 	}
 
 	@ExceptionHandler(ConstraintViolationException.class)
