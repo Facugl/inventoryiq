@@ -6,9 +6,13 @@ import com.inventoryiq.application.port.in.ForecastDemandUseCase;
 import com.inventoryiq.application.port.in.GenerateAlertsUseCase;
 import com.inventoryiq.application.port.in.GenerateReorderSuggestionsUseCase;
 import com.inventoryiq.application.port.in.GetCriticalProductsUseCase;
+import com.inventoryiq.application.port.in.ListRecommendationsUseCase;
+import com.inventoryiq.application.port.in.RecalculateRecommendationsUseCase;
+import com.inventoryiq.application.port.in.RegisterRecommendationFeedbackUseCase;
 import com.inventoryiq.application.port.out.CategoryRepository;
 import com.inventoryiq.application.port.out.InventoryRepository;
 import com.inventoryiq.application.port.out.ProductRepository;
+import com.inventoryiq.application.port.out.RecommendationRepository;
 import com.inventoryiq.application.port.out.SaleRepository;
 import com.inventoryiq.application.usecase.ClassifyProductsService;
 import com.inventoryiq.application.usecase.DetectOverstockService;
@@ -16,6 +20,9 @@ import com.inventoryiq.application.usecase.ForecastDemandService;
 import com.inventoryiq.application.usecase.GenerateAlertsService;
 import com.inventoryiq.application.usecase.GenerateReorderSuggestionsService;
 import com.inventoryiq.application.usecase.GetCriticalProductsService;
+import com.inventoryiq.application.usecase.ListRecommendationsService;
+import com.inventoryiq.application.usecase.RecalculateRecommendationsService;
+import com.inventoryiq.application.usecase.RegisterRecommendationFeedbackService;
 import com.inventoryiq.domain.service.CriticalityEvaluator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -85,5 +92,23 @@ public class UseCaseConfig {
 			SaleRepository saleRepository,
 			InventoryRepository inventoryRepository) {
 		return new ForecastDemandService(productRepository, saleRepository, inventoryRepository);
+	}
+
+	@Bean
+	public ListRecommendationsUseCase listRecommendationsUseCase(
+			RecommendationRepository recommendationRepository, ProductRepository productRepository) {
+		return new ListRecommendationsService(recommendationRepository, productRepository);
+	}
+
+	@Bean
+	public RecalculateRecommendationsUseCase recalculateRecommendationsUseCase(
+			GenerateReorderSuggestionsUseCase generateReorderSuggestionsUseCase, RecommendationRepository recommendationRepository) {
+		return new RecalculateRecommendationsService(generateReorderSuggestionsUseCase, recommendationRepository);
+	}
+
+	@Bean
+	public RegisterRecommendationFeedbackUseCase registerRecommendationFeedbackUseCase(
+			RecommendationRepository recommendationRepository, ProductRepository productRepository) {
+		return new RegisterRecommendationFeedbackService(recommendationRepository, productRepository);
 	}
 }
