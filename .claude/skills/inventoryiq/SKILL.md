@@ -78,15 +78,17 @@ Proposals must be clearly separated from existing project decisions.
 
 The `docs/` directory currently contains documentation related to:
 
-* InventoryIQ project/product/architecture documentation
+* InventoryIQ product/functional/target-architecture specification (aspirational, not audited against code)
 * InventoryIQ implementation roadmap
 * Simulated CSV data
+* InventoryIQ implemented architecture (audited against code — IMPLEMENTADO only)
 
 Relevant files include:
 
-* `docs/InventoryIQ_Documentacion.md`
-* `docs/InventoryIQ_Roadmap.md`
-* `docs/README_datos_simulados.md`
+* `docs/InventoryIQ_Documentacion.md` — target spec: product vision, business rules, data model, ETL, API design. Describes intent, not current implementation.
+* `docs/InventoryIQ_Roadmap.md` — phased MVP roadmap.
+* `docs/README_datos_simulados.md` — how the simulated CSV datasets were generated.
+* `docs/InventoryIQ_Arquitectura.md` — the only doc in `docs/` audited against source code: backend layer overview (controllers, use cases, ports, adapters) plus three end-to-end business flows (reorder suggestions, product status recalculation, CSV ingestion). When asked for current/implemented architecture diagrams or flows, this is the file to read and update — never `InventoryIQ_Documentacion.md`, which is target-state only.
 
 Before proposing architectural changes, inspect these documents and compare them against the current implementation.
 
