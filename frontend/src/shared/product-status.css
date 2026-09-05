@@ -30,3 +30,19 @@
   background: rgba(107, 114, 128, 0.15);
   color: #6b7280;
 }
+
+/* RecommendationStatus (Secciones 8.5/8.7) reutiliza el mismo lenguaje visual. */
+.status-pending {
+  background: rgba(217, 119, 6, 0.15);
+  color: #d97706;
+}
+
+.status-applied {
+  background: rgba(22, 163, 74, 0.15);
+  color: #16a34a;
+}
+
+.status-discarded {
+  background: rgba(107, 114, 128, 0.15);
+  color: #6b7280;
+}

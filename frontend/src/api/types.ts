@@ -108,3 +108,24 @@ export interface RecalculateProductStatusResult {
   storesProcessed: number
   perStore: StoreRecalculationSummary[]
 }
+
+/** Sección 8.5/8.7 — estado de una recomendación de compra persistida (backend: domain.model.RecommendationStatus). */
+export type RecommendationStatus = 'PENDING' | 'APPLIED' | 'DISCARDED'
+
+/** Forma de RecommendationResponse (GET/PATCH /api/v1/recommendations). */
+export interface Recommendation {
+  recommendationId: number
+  productId: number
+  sku: string
+  productName: string
+  storeId: number
+  categoryId: number
+  supplierId: number | null
+  suggestedQuantity: number
+  orderDeadlineDate: string
+  justification: string
+  status: RecommendationStatus
+  generationDate: string
+  feedbackComment: string | null
+  feedbackDate: string | null
+}

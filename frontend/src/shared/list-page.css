@@ -63,6 +63,12 @@
   cursor: default;
 }
 
+.filters button[type='button'] {
+  background: none;
+  color: var(--text-h);
+  border: 1px solid var(--border);
+}
+
 .state {
   padding: 16px;
   border-radius: 8px;
@@ -103,6 +109,33 @@
 
 .data-table td {
   color: var(--text-h);
+}
+
+.wrap-col {
+  white-space: normal;
+  min-width: 220px;
+  max-width: 360px;
+}
+
+.row-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.row-actions button {
+  font: inherit;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.row-actions button:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .link-button {
