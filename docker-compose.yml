@@ -29,7 +29,9 @@ services:
     ports:
       - "${BACKEND_PORT}:8080"
     volumes:
-      - ./data/csv:/app/data/csv:ro
+      # Escritura necesaria: IngestCsvFileUseCase (POST /api/v1/csv-ingestions)
+      # persiste ventas aceptadas agregándolas a ventas.csv (CsvSaleRepositoryAdapter).
+      - ./data/csv:/app/data/csv
 
   frontend:
     build: ./frontend

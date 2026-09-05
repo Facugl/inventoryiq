@@ -68,3 +68,43 @@ export interface ProductForecast {
   baseAds: number | null
   periods: DemandForecastPeriod[]
 }
+
+/** Backend: application.port.in.CsvFileType. Único valor implementado: SALES. */
+export type CsvFileType = 'SALES'
+
+/** Forma de RowRejectionResponse (fila rechazada de una ingesta CSV). */
+export interface RowRejection {
+  rowNumber: number
+  reason: string
+}
+
+/** Forma de IngestionSummaryResponse (POST /api/v1/csv-ingestions). */
+export interface IngestionSummary {
+  totalRowsRead: number
+  acceptedCount: number
+  rejectedCount: number
+  rejections: RowRejection[]
+}
+
+/** Forma de RecalculateRecommendationsResponse, anidado en StoreRecalculationSummaryResponse. */
+export interface RecalculateRecommendationsSummary {
+  totalGenerated: number
+  newCount: number
+  updatedCount: number
+  autoDiscardedCount: number
+}
+
+/** Forma de StoreRecalculationSummaryResponse, anidado en RecalculateProductStatusResponse. */
+export interface StoreRecalculationSummary {
+  storeId: number
+  criticalProductsFound: number
+  overstockProductsFound: number
+  alertsGenerated: number
+  recommendations: RecalculateRecommendationsSummary
+}
+
+/** Forma de RecalculateProductStatusResponse (POST /api/v1/product-status/recalculate). */
+export interface RecalculateProductStatusResult {
+  storesProcessed: number
+  perStore: StoreRecalculationSummary[]
+}

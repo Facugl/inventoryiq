@@ -1,0 +1,22 @@
+.page section {
+  margin-bottom: 40px;
+}
+
+.page section h2 {
+  font-size: 20px;
+  margin: 0 0 8px;
+}
+
+.page section > p {
+  color: var(--text);
+  margin-bottom: 16px;
+  max-width: 720px;
+}
+
+.state p {
+  margin: 0 0 8px;
+}
+
+.state table {
+  margin-top: 8px;
+}
