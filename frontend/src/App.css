@@ -1,0 +1,21 @@
+.app-nav {
+  display: flex;
+  gap: 4px;
+  padding: 12px 32px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.app-nav button {
+  font: inherit;
+  padding: 10px 16px;
+  border: none;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+
+.app-nav button.active {
+  color: var(--text-h);
+  border-bottom-color: var(--accent);
+}

@@ -1,0 +1,32 @@
+.status {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.status-critical {
+  background: rgba(220, 38, 38, 0.15);
+  color: #dc2626;
+}
+
+.status-requires-replenishment {
+  background: rgba(217, 119, 6, 0.15);
+  color: #d97706;
+}
+
+.status-normal {
+  background: rgba(22, 163, 74, 0.15);
+  color: #16a34a;
+}
+
+.status-overstock {
+  background: rgba(37, 99, 235, 0.15);
+  color: #2563eb;
+}
+
+.status-low-rotation {
+  background: rgba(107, 114, 128, 0.15);
+  color: #6b7280;
+}

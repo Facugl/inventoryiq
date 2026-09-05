@@ -14,3 +14,19 @@ export interface CriticalProduct {
   status: ProductStatus
   criticalityScore: number
 }
+
+/** Backend: application.port.in.OverstockSortBy. */
+export type OverstockSortBy = 'IMMOBILIZED_VALUE' | 'DAYS_OF_COVERAGE'
+
+/** Forma de OverstockProductResponse (GET /api/v1/products/overstock). Todo resultado está, por definición, en Sobrestock. */
+export interface OverstockProduct {
+  productId: number
+  sku: string
+  productName: string
+  storeId: number
+  categoryId: number
+  currentStock: number
+  currentDaysOfCoverage: number
+  /** BigDecimal en el backend; llega como número JSON. */
+  immobilizedValue: number
+}
