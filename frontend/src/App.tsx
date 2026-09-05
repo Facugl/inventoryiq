@@ -5,10 +5,19 @@ import { OverstockPage } from './features/overstock/OverstockPage'
 import { ProductDetailPage, type ProductSelection } from './features/product-detail/ProductDetailPage'
 import { RecommendationsPage } from './features/recommendations/RecommendationsPage'
 import { AlertsPage } from './features/alerts/AlertsPage'
+import { ClassificationPage } from './features/classification/ClassificationPage'
 import { AdminPage } from './features/admin/AdminPage'
 import './App.css'
 
-type ScreenKey = 'home' | 'alerts' | 'critical' | 'overstock' | 'recommendations' | 'detail' | 'admin'
+type ScreenKey =
+  | 'home'
+  | 'alerts'
+  | 'critical'
+  | 'overstock'
+  | 'recommendations'
+  | 'detail'
+  | 'classification'
+  | 'admin'
 
 const NAV_ITEMS: { key: ScreenKey; label: string }[] = [
   { key: 'home', label: 'Inicio' },
@@ -17,6 +26,7 @@ const NAV_ITEMS: { key: ScreenKey; label: string }[] = [
   { key: 'overstock', label: 'Sobrestock' },
   { key: 'recommendations', label: 'Recomendaciones' },
   { key: 'detail', label: 'Detalle de producto' },
+  { key: 'classification', label: 'Clasificación ABC/XYZ' },
   { key: 'admin', label: 'Administración' },
 ]
 
@@ -50,6 +60,7 @@ function App() {
       {screen === 'overstock' && <OverstockPage onSelectProduct={selectProduct} />}
       {screen === 'recommendations' && <RecommendationsPage />}
       {screen === 'detail' && <ProductDetailPage initialSelection={selection} />}
+      {screen === 'classification' && <ClassificationPage />}
       {screen === 'admin' && <AdminPage />}
     </>
   )

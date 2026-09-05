@@ -62,3 +62,35 @@
   background: rgba(107, 114, 128, 0.15);
   color: #6b7280;
 }
+
+/* AbcClassification (Sección 4.7): A = mayor contribución al valor de venta. */
+.status-a {
+  background: rgba(22, 163, 74, 0.15);
+  color: #16a34a;
+}
+
+.status-b {
+  background: rgba(217, 119, 6, 0.15);
+  color: #d97706;
+}
+
+.status-c {
+  background: rgba(107, 114, 128, 0.15);
+  color: #6b7280;
+}
+
+/* XyzClassification (Sección 4.7): X = demanda estable, Z = errática. */
+.status-x {
+  background: rgba(37, 99, 235, 0.15);
+  color: #2563eb;
+}
+
+.status-y {
+  background: rgba(217, 119, 6, 0.15);
+  color: #d97706;
+}
+
+.status-z {
+  background: rgba(220, 38, 38, 0.15);
+  color: #dc2626;
+}

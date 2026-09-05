@@ -151,3 +151,20 @@ export interface Alert {
   severity: AlertSeverity
   generatedAt: string
 }
+
+/** Sección 4.7 — clasificación por contribución al valor de venta (backend: domain.model.AbcClassification). */
+export type AbcClassification = 'A' | 'B' | 'C'
+
+/** Sección 4.7 — clasificación por variabilidad de demanda (backend: domain.model.XyzClassification). */
+export type XyzClassification = 'X' | 'Y' | 'Z'
+
+/** Forma de ProductClassificationResponse (GET /api/v1/products/classification). */
+export interface ProductClassification {
+  productId: number
+  sku: string
+  productName: string
+  storeId: number
+  categoryId: number
+  abcClass: AbcClassification
+  xyzClass: XyzClassification
+}
