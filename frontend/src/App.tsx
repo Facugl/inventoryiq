@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { HomePage } from './features/home/HomePage'
 import { CriticalProductsPage } from './features/critical-products/CriticalProductsPage'
 import { OverstockPage } from './features/overstock/OverstockPage'
 import './App.css'
 
 const SCREENS = {
+  home: { label: 'Inicio', render: () => <HomePage /> },
   critical: { label: 'Productos críticos', render: () => <CriticalProductsPage /> },
   overstock: { label: 'Sobrestock', render: () => <OverstockPage /> },
 } as const
@@ -11,7 +13,7 @@ const SCREENS = {
 type ScreenKey = keyof typeof SCREENS
 
 function App() {
-  const [screen, setScreen] = useState<ScreenKey>('critical')
+  const [screen, setScreen] = useState<ScreenKey>('home')
 
   return (
     <>

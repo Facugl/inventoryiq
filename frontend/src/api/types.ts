@@ -30,3 +30,16 @@ export interface OverstockProduct {
   /** BigDecimal en el backend; llega como número JSON. */
   immobilizedValue: number
 }
+
+/**
+ * Forma de InventoryKPIsResponse (GET /api/v1/kpis). Los campos nullable
+ * (todos salvo immobilizedOverstockValue) son null cuando no hay datos
+ * suficientes en el período — no significan cero, ver CalculateInventoryKPIsService.
+ */
+export interface InventoryKpis {
+  stockoutRate: number | null
+  averageDaysOfCoverage: number | null
+  immobilizedOverstockValue: number
+  recommendationsFollowedRate: number | null
+  inventoryTurnover: number | null
+}
