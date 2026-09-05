@@ -129,3 +129,25 @@ export interface Recommendation {
   feedbackComment: string | null
   feedbackDate: string | null
 }
+
+/** Backend: application.port.in.AlertType. */
+export type AlertType = 'STOCKOUT' | 'OVERSTOCK'
+
+/** Backend: application.port.in.AlertSeverity. */
+export type AlertSeverity = 'HIGH' | 'MEDIUM' | 'LOW'
+
+/**
+ * Forma de AlertResponse (GET /api/v1/alerts). Pura composición de
+ * GetCriticalProductsUseCase (STOCKOUT) y DetectOverstockUseCase
+ * (OVERSTOCK) — no hay ningún dato nuevo que este endpoint calcule.
+ */
+export interface Alert {
+  productId: number
+  sku: string
+  productName: string
+  storeId: number
+  categoryId: number
+  type: AlertType
+  severity: AlertSeverity
+  generatedAt: string
+}

@@ -4,13 +4,15 @@ import { CriticalProductsPage } from './features/critical-products/CriticalProdu
 import { OverstockPage } from './features/overstock/OverstockPage'
 import { ProductDetailPage, type ProductSelection } from './features/product-detail/ProductDetailPage'
 import { RecommendationsPage } from './features/recommendations/RecommendationsPage'
+import { AlertsPage } from './features/alerts/AlertsPage'
 import { AdminPage } from './features/admin/AdminPage'
 import './App.css'
 
-type ScreenKey = 'home' | 'critical' | 'overstock' | 'recommendations' | 'detail' | 'admin'
+type ScreenKey = 'home' | 'alerts' | 'critical' | 'overstock' | 'recommendations' | 'detail' | 'admin'
 
 const NAV_ITEMS: { key: ScreenKey; label: string }[] = [
   { key: 'home', label: 'Inicio' },
+  { key: 'alerts', label: 'Alertas' },
   { key: 'critical', label: 'Productos críticos' },
   { key: 'overstock', label: 'Sobrestock' },
   { key: 'recommendations', label: 'Recomendaciones' },
@@ -43,6 +45,7 @@ function App() {
       </nav>
 
       {screen === 'home' && <HomePage />}
+      {screen === 'alerts' && <AlertsPage />}
       {screen === 'critical' && <CriticalProductsPage onSelectProduct={selectProduct} />}
       {screen === 'overstock' && <OverstockPage onSelectProduct={selectProduct} />}
       {screen === 'recommendations' && <RecommendationsPage />}

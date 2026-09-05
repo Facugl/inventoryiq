@@ -46,3 +46,19 @@
   background: rgba(107, 114, 128, 0.15);
   color: #6b7280;
 }
+
+/* AlertSeverity (Sección 8.14/9.6) reutiliza el mismo lenguaje visual. */
+.status-high {
+  background: rgba(220, 38, 38, 0.15);
+  color: #dc2626;
+}
+
+.status-medium {
+  background: rgba(217, 119, 6, 0.15);
+  color: #d97706;
+}
+
+.status-low {
+  background: rgba(107, 114, 128, 0.15);
+  color: #6b7280;
+}
