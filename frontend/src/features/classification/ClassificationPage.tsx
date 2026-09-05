@@ -1,8 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { getProductClassification } from '../../api/classification'
 import { ApiError } from '../../api/http'
-import type { AbcClassification, ProductClassification, XyzClassification } from '../../api/types'
-import { STORES } from '../../data/stores'
+import type { AbcClassification, Category, ProductClassification, Store, XyzClassification } from '../../api/types'
+import { categoryLabel } from '../../shared/categoryLookup'
 import '../../shared/list-page.css'
 import '../../shared/product-status.css'
 import './ClassificationPage.css'
@@ -35,8 +35,13 @@ interface Filters {
   referenceDate: string
 }
 
-export function ClassificationPage() {
-  const [storeId, setStoreId] = useState(STORES[0].id)
+interface ClassificationPageProps {
+  stores: Store[]
+  categories: Category[]
+}
+
+export function ClassificationPage({ stores, categories }: ClassificationPageProps) {
+  const [storeId, setStoreId] = useState(stores[0].id)
   const [referenceDate, setReferenceDate] = useState(DEFAULT_REFERENCE_DATE)
   const [products, setProducts] = useState<ProductClassification[] | null>(null)
   // Arranca en true: la carga inicial se dispara apenas monta (ver efecto de abajo).
@@ -110,7 +115,7 @@ export function ClassificationPage() {
         <label>
           Sucursal
           <select value={storeId} onChange={(event) => setStoreId(Number(event.target.value))}>
-            {STORES.map((store) => (
+            {stores.map((store) => (
               <option key={store.id} value={store.id}>
                 {store.name}
               </option>
@@ -161,7 +166,7 @@ export function ClassificationPage() {
                 <tr key={product.productId}>
                   <td>{product.sku}</td>
                   <td>{product.productName}</td>
-                  <td>#{product.categoryId}</td>
+                  <td>{categoryLabel(categories, product.categoryId)}</td>
                   <td>
                     <span className={badgeClassName(product.abcClass)}>{product.abcClass}</span>
                   </td>

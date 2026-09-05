@@ -1,8 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { getOverstockProducts } from '../../api/overstockProducts'
 import { ApiError } from '../../api/http'
-import type { OverstockProduct, OverstockSortBy } from '../../api/types'
-import { STORES } from '../../data/stores'
+import type { Category, OverstockProduct, OverstockSortBy, Store } from '../../api/types'
+import { categoryLabel } from '../../shared/categoryLookup'
 import '../../shared/list-page.css'
 
 const SORT_OPTIONS: { value: OverstockSortBy; label: string }[] = [
@@ -22,11 +22,13 @@ interface Filters {
 }
 
 interface OverstockPageProps {
+  stores: Store[]
+  categories: Category[]
   onSelectProduct?: (productId: number, storeId: number) => void
 }
 
-export function OverstockPage({ onSelectProduct }: OverstockPageProps) {
-  const [storeId, setStoreId] = useState(STORES[0].id)
+export function OverstockPage({ stores, categories, onSelectProduct }: OverstockPageProps) {
+  const [storeId, setStoreId] = useState(stores[0].id)
   const [referenceDate, setReferenceDate] = useState(DEFAULT_REFERENCE_DATE)
   const [sortBy, setSortBy] = useState<OverstockSortBy>('IMMOBILIZED_VALUE')
   const [products, setProducts] = useState<OverstockProduct[] | null>(null)
@@ -90,7 +92,7 @@ export function OverstockPage({ onSelectProduct }: OverstockPageProps) {
         <label>
           Sucursal
           <select value={storeId} onChange={(event) => setStoreId(Number(event.target.value))}>
-            {STORES.map((store) => (
+            {stores.map((store) => (
               <option key={store.id} value={store.id}>
                 {store.name}
               </option>
@@ -164,7 +166,7 @@ export function OverstockPage({ onSelectProduct }: OverstockPageProps) {
                     )}
                   </td>
                   <td>{product.productName}</td>
-                  <td>#{product.categoryId}</td>
+                  <td>{categoryLabel(categories, product.categoryId)}</td>
                   <td>{product.currentStock}</td>
                   <td>{product.currentDaysOfCoverage.toFixed(1)}</td>
                   <td>{currencyFormatter.format(product.immobilizedValue)}</td>

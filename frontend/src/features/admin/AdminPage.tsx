@@ -2,8 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { ingestCsvFile, CsvIngestionThresholdError } from '../../api/csvIngestion'
 import { recalculateProductStatus } from '../../api/productStatus'
 import { ApiError } from '../../api/http'
-import type { IngestionSummary, RecalculateProductStatusResult, RowRejection } from '../../api/types'
-import { STORES } from '../../data/stores'
+import type { IngestionSummary, RecalculateProductStatusResult, RowRejection, Store } from '../../api/types'
 import '../../shared/list-page.css'
 import './AdminPage.css'
 
@@ -118,7 +117,7 @@ function CsvIngestionSection() {
   )
 }
 
-function RecalculateSection() {
+function RecalculateSection({ stores }: { stores: Store[] }) {
   const [storeId, setStoreId] = useState('')
   const [recalculating, setRecalculating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -136,7 +135,7 @@ function RecalculateSection() {
       .finally(() => setRecalculating(false))
   }
 
-  const storeName = (id: number) => STORES.find((store) => store.id === id)?.name ?? `Sucursal #${id}`
+  const storeName = (id: number) => stores.find((store) => store.id === id)?.name ?? `Sucursal #${id}`
 
   return (
     <section>
@@ -152,7 +151,7 @@ function RecalculateSection() {
           Sucursal
           <select value={storeId} onChange={(event) => setStoreId(event.target.value)}>
             <option value="">Todas las sucursales activas</option>
-            {STORES.map((store) => (
+            {stores.map((store) => (
               <option key={store.id} value={store.id}>
                 {store.name}
               </option>
@@ -204,7 +203,11 @@ function RecalculateSection() {
   )
 }
 
-export function AdminPage() {
+interface AdminPageProps {
+  stores: Store[]
+}
+
+export function AdminPage({ stores }: AdminPageProps) {
   return (
     <main className="page">
       <header className="page-header">
@@ -213,7 +216,7 @@ export function AdminPage() {
       </header>
 
       <CsvIngestionSection />
-      <RecalculateSection />
+      <RecalculateSection stores={stores} />
     </main>
   )
 }

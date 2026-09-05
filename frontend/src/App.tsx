@@ -1,4 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { getStores } from './api/stores'
+import { getCategories } from './api/categories'
+import { ApiError } from './api/http'
+import type { Category, Store } from './api/types'
 import { HomePage } from './features/home/HomePage'
 import { CriticalProductsPage } from './features/critical-products/CriticalProductsPage'
 import { OverstockPage } from './features/overstock/OverstockPage'
@@ -34,9 +38,53 @@ function App() {
   const [screen, setScreen] = useState<ScreenKey>('home')
   const [selection, setSelection] = useState<ProductSelection | null>(null)
 
+  const [stores, setStores] = useState<Store[] | null>(null)
+  const [categories, setCategories] = useState<Category[] | null>(null)
+  const [catalogError, setCatalogError] = useState<string | null>(null)
+
+  // Se cargan una sola vez, apenas monta. Todo setState ocurre dentro de
+  // then/catch (fuera del cuerpo síncrono del efecto) para no disparar el
+  // warning de set-state-in-effect.
+  useEffect(() => {
+    let cancelled = false
+
+    Promise.all([getStores(), getCategories()])
+      .then(([storeList, categoryList]) => {
+        if (!cancelled) {
+          setStores(storeList)
+          setCategories(categoryList)
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setCatalogError(err instanceof ApiError ? err.message : 'No se pudo conectar con el servidor.')
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const selectProduct = (productId: number, storeId: number) => {
     setSelection({ productId, storeId })
     setScreen('detail')
+  }
+
+  if (catalogError) {
+    return (
+      <main style={{ padding: 32 }}>
+        <p role="alert">No se pudo cargar el catálogo de sucursales/categorías: {catalogError}</p>
+      </main>
+    )
+  }
+
+  if (!stores || !categories) {
+    return (
+      <main style={{ padding: 32 }}>
+        <p>Cargando…</p>
+      </main>
+    )
   }
 
   return (
@@ -54,14 +102,18 @@ function App() {
         ))}
       </nav>
 
-      {screen === 'home' && <HomePage />}
-      {screen === 'alerts' && <AlertsPage />}
-      {screen === 'critical' && <CriticalProductsPage onSelectProduct={selectProduct} />}
-      {screen === 'overstock' && <OverstockPage onSelectProduct={selectProduct} />}
-      {screen === 'recommendations' && <RecommendationsPage />}
-      {screen === 'detail' && <ProductDetailPage initialSelection={selection} />}
-      {screen === 'classification' && <ClassificationPage />}
-      {screen === 'admin' && <AdminPage />}
+      {screen === 'home' && <HomePage stores={stores} />}
+      {screen === 'alerts' && <AlertsPage stores={stores} categories={categories} />}
+      {screen === 'critical' && (
+        <CriticalProductsPage stores={stores} categories={categories} onSelectProduct={selectProduct} />
+      )}
+      {screen === 'overstock' && (
+        <OverstockPage stores={stores} categories={categories} onSelectProduct={selectProduct} />
+      )}
+      {screen === 'recommendations' && <RecommendationsPage stores={stores} />}
+      {screen === 'detail' && <ProductDetailPage stores={stores} initialSelection={selection} />}
+      {screen === 'classification' && <ClassificationPage stores={stores} categories={categories} />}
+      {screen === 'admin' && <AdminPage stores={stores} />}
     </>
   )
 }

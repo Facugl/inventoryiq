@@ -1,8 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { getRecommendations, recalculateRecommendations, registerRecommendationFeedback } from '../../api/recommendations'
 import { ApiError } from '../../api/http'
-import type { Recommendation, RecalculateRecommendationsSummary, RecommendationStatus } from '../../api/types'
-import { STORES } from '../../data/stores'
+import type { Recommendation, RecalculateRecommendationsSummary, RecommendationStatus, Store } from '../../api/types'
 import '../../shared/list-page.css'
 import '../../shared/product-status.css'
 
@@ -32,8 +31,12 @@ interface Filters {
   status: RecommendationStatus | ''
 }
 
-export function RecommendationsPage() {
-  const [storeId, setStoreId] = useState(STORES[0].id)
+interface RecommendationsPageProps {
+  stores: Store[]
+}
+
+export function RecommendationsPage({ stores }: RecommendationsPageProps) {
+  const [storeId, setStoreId] = useState(stores[0].id)
   const [status, setStatus] = useState<RecommendationStatus | ''>('')
   const [recommendations, setRecommendations] = useState<Recommendation[] | null>(null)
   // Arranca en true: la carga inicial se dispara apenas monta (ver efecto de abajo).
@@ -124,7 +127,7 @@ export function RecommendationsPage() {
         <label>
           Sucursal
           <select value={storeId} onChange={(event) => setStoreId(Number(event.target.value))}>
-            {STORES.map((store) => (
+            {stores.map((store) => (
               <option key={store.id} value={store.id}>
                 {store.name}
               </option>

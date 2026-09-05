@@ -1,3 +1,16 @@
+/** Forma de StoreResponse (GET /api/v1/stores), con storeId renombrado a id por brevedad en el resto del frontend. */
+export interface Store {
+  id: number
+  name: string
+}
+
+/** Forma de CategoryResponse (GET /api/v1/categories). parentCategoryId es null para categorías raíz. */
+export interface Category {
+  categoryId: number
+  name: string
+  parentCategoryId: number | null
+}
+
 /** Sección 4.12 de la documentación — máquina de estados de un producto (backend: domain.model.ProductStatus). */
 export type ProductStatus = 'NORMAL' | 'REQUIRES_REPLENISHMENT' | 'CRITICAL' | 'OVERSTOCK' | 'LOW_ROTATION'
 

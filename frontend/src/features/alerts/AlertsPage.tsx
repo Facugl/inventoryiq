@@ -1,8 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { getAlerts } from '../../api/alerts'
 import { ApiError } from '../../api/http'
-import type { Alert, AlertSeverity, AlertType } from '../../api/types'
-import { STORES } from '../../data/stores'
+import type { Alert, AlertSeverity, AlertType, Category, Store } from '../../api/types'
+import { categoryLabel } from '../../shared/categoryLookup'
 import '../../shared/list-page.css'
 import '../../shared/product-status.css'
 
@@ -48,8 +48,13 @@ interface Filters {
   severity: AlertSeverity | ''
 }
 
-export function AlertsPage() {
-  const [storeId, setStoreId] = useState(STORES[0].id)
+interface AlertsPageProps {
+  stores: Store[]
+  categories: Category[]
+}
+
+export function AlertsPage({ stores, categories }: AlertsPageProps) {
+  const [storeId, setStoreId] = useState(stores[0].id)
   const [referenceDate, setReferenceDate] = useState(DEFAULT_REFERENCE_DATE)
   const [type, setType] = useState<AlertType | ''>('')
   const [severity, setSeverity] = useState<AlertSeverity | ''>('')
@@ -111,7 +116,7 @@ export function AlertsPage() {
         <label>
           Sucursal
           <select value={storeId} onChange={(event) => setStoreId(Number(event.target.value))}>
-            {STORES.map((store) => (
+            {stores.map((store) => (
               <option key={store.id} value={store.id}>
                 {store.name}
               </option>
@@ -183,7 +188,7 @@ export function AlertsPage() {
                 <tr key={`${alert.productId}-${alert.type}`}>
                   <td>{alert.sku}</td>
                   <td>{alert.productName}</td>
-                  <td>#{alert.categoryId}</td>
+                  <td>{categoryLabel(categories, alert.categoryId)}</td>
                   <td>{TYPE_LABELS[alert.type]}</td>
                   <td>
                     <span className={severityClassName(alert.severity)}>{SEVERITY_LABELS[alert.severity]}</span>

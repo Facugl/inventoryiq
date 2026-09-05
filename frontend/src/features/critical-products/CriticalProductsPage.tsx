@@ -1,8 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { getCriticalProducts } from '../../api/criticalProducts'
 import { ApiError } from '../../api/http'
-import type { CriticalProduct } from '../../api/types'
-import { STORES } from '../../data/stores'
+import type { Category, CriticalProduct, Store } from '../../api/types'
+import { categoryLabel } from '../../shared/categoryLookup'
 import { STATUS_LABELS, statusClassName } from '../../shared/productStatus'
 import '../../shared/list-page.css'
 import '../../shared/product-status.css'
@@ -17,11 +17,13 @@ interface Filters {
 }
 
 interface CriticalProductsPageProps {
+  stores: Store[]
+  categories: Category[]
   onSelectProduct?: (productId: number, storeId: number) => void
 }
 
-export function CriticalProductsPage({ onSelectProduct }: CriticalProductsPageProps) {
-  const [storeId, setStoreId] = useState(STORES[0].id)
+export function CriticalProductsPage({ stores, categories, onSelectProduct }: CriticalProductsPageProps) {
+  const [storeId, setStoreId] = useState(stores[0].id)
   const [referenceDate, setReferenceDate] = useState(DEFAULT_REFERENCE_DATE)
   const [limit, setLimit] = useState('')
   const [products, setProducts] = useState<CriticalProduct[] | null>(null)
@@ -85,7 +87,7 @@ export function CriticalProductsPage({ onSelectProduct }: CriticalProductsPagePr
         <label>
           Sucursal
           <select value={storeId} onChange={(event) => setStoreId(Number(event.target.value))}>
-            {STORES.map((store) => (
+            {stores.map((store) => (
               <option key={store.id} value={store.id}>
                 {store.name}
               </option>
@@ -161,7 +163,7 @@ export function CriticalProductsPage({ onSelectProduct }: CriticalProductsPagePr
                     )}
                   </td>
                   <td>{product.productName}</td>
-                  <td>#{product.categoryId}</td>
+                  <td>{categoryLabel(categories, product.categoryId)}</td>
                   <td>{product.currentStock}</td>
                   <td>{product.reorderPointUnits.toFixed(1)}</td>
                   <td>{product.currentDaysOfCoverage.toFixed(1)}</td>

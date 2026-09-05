@@ -1,8 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { getProductForecast } from '../../api/forecast'
 import { ApiError } from '../../api/http'
-import type { ProductForecast } from '../../api/types'
-import { STORES } from '../../data/stores'
+import type { ProductForecast, Store } from '../../api/types'
 import '../../shared/list-page.css'
 
 // Fecha de corte de los datos CSV simulados (docs/README_datos_simulados.md).
@@ -18,12 +17,13 @@ export interface ProductSelection {
 }
 
 interface ProductDetailPageProps {
+  stores: Store[]
   initialSelection: ProductSelection | null
 }
 
-export function ProductDetailPage({ initialSelection }: ProductDetailPageProps) {
+export function ProductDetailPage({ stores, initialSelection }: ProductDetailPageProps) {
   const [productId, setProductId] = useState(initialSelection ? String(initialSelection.productId) : '')
-  const [storeId, setStoreId] = useState(initialSelection?.storeId ?? STORES[0].id)
+  const [storeId, setStoreId] = useState(initialSelection?.storeId ?? stores[0].id)
   const [referenceDate, setReferenceDate] = useState(DEFAULT_REFERENCE_DATE)
   const [horizonDays, setHorizonDays] = useState(DEFAULT_HORIZON_DAYS)
   const [forecast, setForecast] = useState<ProductForecast | null>(null)
@@ -110,7 +110,7 @@ export function ProductDetailPage({ initialSelection }: ProductDetailPageProps) 
         <label>
           Sucursal
           <select value={storeId} onChange={(event) => setStoreId(Number(event.target.value))}>
-            {STORES.map((store) => (
+            {stores.map((store) => (
               <option key={store.id} value={store.id}>
                 {store.name}
               </option>

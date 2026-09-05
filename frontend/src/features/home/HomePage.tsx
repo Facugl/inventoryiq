@@ -1,8 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { getInventoryKpis } from '../../api/kpis'
 import { ApiError } from '../../api/http'
-import type { InventoryKpis } from '../../api/types'
-import { STORES } from '../../data/stores'
+import type { InventoryKpis, Store } from '../../api/types'
 import '../../shared/list-page.css'
 import './HomePage.css'
 
@@ -33,8 +32,12 @@ interface Filters {
   toDate: string
 }
 
-export function HomePage() {
-  const [storeId, setStoreId] = useState(STORES[0].id)
+interface HomePageProps {
+  stores: Store[]
+}
+
+export function HomePage({ stores }: HomePageProps) {
+  const [storeId, setStoreId] = useState(stores[0].id)
   const [fromDate, setFromDate] = useState(DEFAULT_FROM_DATE)
   const [toDate, setToDate] = useState(DEFAULT_TO_DATE)
   const [kpis, setKpis] = useState<InventoryKpis | null>(null)
@@ -98,7 +101,7 @@ export function HomePage() {
         <label>
           Sucursal
           <select value={storeId} onChange={(event) => setStoreId(Number(event.target.value))}>
-            {STORES.map((store) => (
+            {stores.map((store) => (
               <option key={store.id} value={store.id}>
                 {store.name}
               </option>
