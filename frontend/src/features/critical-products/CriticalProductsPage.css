@@ -1,0 +1,128 @@
+.page {
+  padding: 32px;
+  text-align: left;
+}
+
+.page-header h1 {
+  font-size: 32px;
+  margin: 0 0 8px;
+}
+
+.page-header p {
+  color: var(--text);
+  margin-bottom: 24px;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: end;
+  margin-bottom: 24px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+  color: var(--text-h);
+}
+
+.filters input,
+.filters select {
+  font: inherit;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.filters button {
+  font: inherit;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+}
+
+.filters button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.state {
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.state-error {
+  color: #b91c1c;
+  background: rgba(185, 28, 28, 0.1);
+}
+
+.state-empty {
+  color: var(--text);
+  background: var(--code-bg);
+}
+
+.products-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.products-table th,
+.products-table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.products-table th {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.products-table td {
+  color: var(--text-h);
+}
+
+.status {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.status-critical {
+  background: rgba(220, 38, 38, 0.15);
+  color: #dc2626;
+}
+
+.status-requires-replenishment {
+  background: rgba(217, 119, 6, 0.15);
+  color: #d97706;
+}
+
+.status-normal {
+  background: rgba(22, 163, 74, 0.15);
+  color: #16a34a;
+}
+
+.status-overstock {
+  background: rgba(37, 99, 235, 0.15);
+  color: #2563eb;
+}
+
+.status-low-rotation {
+  background: rgba(107, 114, 128, 0.15);
+  color: #6b7280;
+}
