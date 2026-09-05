@@ -21,7 +21,11 @@ interface Filters {
   sortBy: OverstockSortBy
 }
 
-export function OverstockPage() {
+interface OverstockPageProps {
+  onSelectProduct?: (productId: number, storeId: number) => void
+}
+
+export function OverstockPage({ onSelectProduct }: OverstockPageProps) {
   const [storeId, setStoreId] = useState(STORES[0].id)
   const [referenceDate, setReferenceDate] = useState(DEFAULT_REFERENCE_DATE)
   const [sortBy, setSortBy] = useState<OverstockSortBy>('IMMOBILIZED_VALUE')
@@ -145,7 +149,19 @@ export function OverstockPage() {
           <tbody>
             {products.map((product) => (
               <tr key={product.productId}>
-                <td>{product.sku}</td>
+                <td>
+                  {onSelectProduct ? (
+                    <button
+                      type="button"
+                      className="link-button"
+                      onClick={() => onSelectProduct(product.productId, product.storeId)}
+                    >
+                      {product.sku}
+                    </button>
+                  ) : (
+                    product.sku
+                  )}
+                </td>
                 <td>{product.productName}</td>
                 <td>#{product.categoryId}</td>
                 <td>{product.currentStock}</td>

@@ -2,34 +2,46 @@ import { useState } from 'react'
 import { HomePage } from './features/home/HomePage'
 import { CriticalProductsPage } from './features/critical-products/CriticalProductsPage'
 import { OverstockPage } from './features/overstock/OverstockPage'
+import { ProductDetailPage, type ProductSelection } from './features/product-detail/ProductDetailPage'
 import './App.css'
 
-const SCREENS = {
-  home: { label: 'Inicio', render: () => <HomePage /> },
-  critical: { label: 'Productos críticos', render: () => <CriticalProductsPage /> },
-  overstock: { label: 'Sobrestock', render: () => <OverstockPage /> },
-} as const
+type ScreenKey = 'home' | 'critical' | 'overstock' | 'detail'
 
-type ScreenKey = keyof typeof SCREENS
+const NAV_ITEMS: { key: ScreenKey; label: string }[] = [
+  { key: 'home', label: 'Inicio' },
+  { key: 'critical', label: 'Productos críticos' },
+  { key: 'overstock', label: 'Sobrestock' },
+  { key: 'detail', label: 'Detalle de producto' },
+]
 
 function App() {
   const [screen, setScreen] = useState<ScreenKey>('home')
+  const [selection, setSelection] = useState<ProductSelection | null>(null)
+
+  const selectProduct = (productId: number, storeId: number) => {
+    setSelection({ productId, storeId })
+    setScreen('detail')
+  }
 
   return (
     <>
       <nav className="app-nav">
-        {(Object.keys(SCREENS) as ScreenKey[]).map((key) => (
+        {NAV_ITEMS.map((item) => (
           <button
-            key={key}
+            key={item.key}
             type="button"
-            className={key === screen ? 'active' : ''}
-            onClick={() => setScreen(key)}
+            className={item.key === screen ? 'active' : ''}
+            onClick={() => setScreen(item.key)}
           >
-            {SCREENS[key].label}
+            {item.label}
           </button>
         ))}
       </nav>
-      {SCREENS[screen].render()}
+
+      {screen === 'home' && <HomePage />}
+      {screen === 'critical' && <CriticalProductsPage onSelectProduct={selectProduct} />}
+      {screen === 'overstock' && <OverstockPage onSelectProduct={selectProduct} />}
+      {screen === 'detail' && <ProductDetailPage initialSelection={selection} />}
     </>
   )
 }

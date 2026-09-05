@@ -43,3 +43,28 @@ export interface InventoryKpis {
   recommendationsFollowedRate: number | null
   inventoryTurnover: number | null
 }
+
+/** Forma de DemandForecastPeriodResponse, anidado en ForecastDemandResponse. */
+export interface DemandForecastPeriod {
+  periodStart: string
+  periodEnd: string
+  seasonalIndex: number
+  projectedDailyAds: number
+  projectedTotalDemand: number
+}
+
+/**
+ * Forma de ForecastDemandResponse (GET /api/v1/products/{productId}/forecast).
+ * No es una "ficha de producto" completa (la Sección 8.2 de InventoryIQ_Documentacion.md
+ * describe eso, pero no está implementado) — es solo la proyección de demanda.
+ * baseAds es null y periods vacío cuando el producto existe pero no tiene
+ * historial de ventas suficiente para proyectar (ver ForecastDemandService).
+ */
+export interface ProductForecast {
+  productId: number
+  sku: string
+  productName: string
+  storeId: number
+  baseAds: number | null
+  periods: DemandForecastPeriod[]
+}

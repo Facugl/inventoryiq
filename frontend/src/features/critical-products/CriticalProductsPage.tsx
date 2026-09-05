@@ -16,7 +16,11 @@ interface Filters {
   limit: string
 }
 
-export function CriticalProductsPage() {
+interface CriticalProductsPageProps {
+  onSelectProduct?: (productId: number, storeId: number) => void
+}
+
+export function CriticalProductsPage({ onSelectProduct }: CriticalProductsPageProps) {
   const [storeId, setStoreId] = useState(STORES[0].id)
   const [referenceDate, setReferenceDate] = useState(DEFAULT_REFERENCE_DATE)
   const [limit, setLimit] = useState('')
@@ -142,7 +146,19 @@ export function CriticalProductsPage() {
           <tbody>
             {products.map((product) => (
               <tr key={product.productId}>
-                <td>{product.sku}</td>
+                <td>
+                  {onSelectProduct ? (
+                    <button
+                      type="button"
+                      className="link-button"
+                      onClick={() => onSelectProduct(product.productId, product.storeId)}
+                    >
+                      {product.sku}
+                    </button>
+                  ) : (
+                    product.sku
+                  )}
+                </td>
                 <td>{product.productName}</td>
                 <td>#{product.categoryId}</td>
                 <td>{product.currentStock}</td>
