@@ -214,6 +214,11 @@ class GenerateReorderSuggestionsServiceTest {
 		public Optional<Category> findById(Long categoryId) {
 			return Optional.ofNullable(categories.get(categoryId));
 		}
+
+		@Override
+		public List<Category> findAll() {
+			return List.copyOf(categories.values());
+		}
 	}
 
 	private static class FakeSaleRepository implements SaleRepository {

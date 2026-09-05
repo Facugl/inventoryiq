@@ -8,7 +8,9 @@ import com.inventoryiq.application.port.in.GenerateAlertsUseCase;
 import com.inventoryiq.application.port.in.GenerateReorderSuggestionsUseCase;
 import com.inventoryiq.application.port.in.GetCriticalProductsUseCase;
 import com.inventoryiq.application.port.in.IngestCsvFileUseCase;
+import com.inventoryiq.application.port.in.ListCategoriesUseCase;
 import com.inventoryiq.application.port.in.ListRecommendationsUseCase;
+import com.inventoryiq.application.port.in.ListStoresUseCase;
 import com.inventoryiq.application.port.in.RecalculateProductStatusUseCase;
 import com.inventoryiq.application.port.in.RecalculateRecommendationsUseCase;
 import com.inventoryiq.application.port.in.RegisterRecommendationFeedbackUseCase;
@@ -27,7 +29,9 @@ import com.inventoryiq.application.usecase.GenerateAlertsService;
 import com.inventoryiq.application.usecase.GenerateReorderSuggestionsService;
 import com.inventoryiq.application.usecase.GetCriticalProductsService;
 import com.inventoryiq.application.usecase.IngestCsvFileService;
+import com.inventoryiq.application.usecase.ListCategoriesService;
 import com.inventoryiq.application.usecase.ListRecommendationsService;
+import com.inventoryiq.application.usecase.ListStoresService;
 import com.inventoryiq.application.usecase.RecalculateProductStatusService;
 import com.inventoryiq.application.usecase.RecalculateRecommendationsService;
 import com.inventoryiq.application.usecase.RegisterRecommendationFeedbackService;
@@ -149,5 +153,15 @@ public class UseCaseConfig {
 		return new RecalculateProductStatusService(
 				storeRepository, getCriticalProductsUseCase, detectOverstockUseCase,
 				recalculateRecommendationsUseCase, generateAlertsUseCase);
+	}
+
+	@Bean
+	public ListStoresUseCase listStoresUseCase(StoreRepository storeRepository) {
+		return new ListStoresService(storeRepository);
+	}
+
+	@Bean
+	public ListCategoriesUseCase listCategoriesUseCase(CategoryRepository categoryRepository) {
+		return new ListCategoriesService(categoryRepository);
 	}
 }

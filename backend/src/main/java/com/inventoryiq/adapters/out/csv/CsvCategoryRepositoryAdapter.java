@@ -31,6 +31,11 @@ public class CsvCategoryRepositoryAdapter implements CategoryRepository {
 		return Optional.ofNullable(categoriesById.get(categoryId));
 	}
 
+	@Override
+	public List<Category> findAll() {
+		return List.copyOf(categoriesById.values());
+	}
+
 	private static Category toCategory(CSVRecord record) {
 		return new Category(
 				CsvFieldParsers.parseLong(record.get("categoria_id")),
