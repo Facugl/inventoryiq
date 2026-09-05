@@ -135,42 +135,44 @@ export function OverstockPage({ onSelectProduct }: OverstockPageProps) {
       )}
 
       {products && products.length > 0 && (
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>SKU</th>
-              <th>Producto</th>
-              <th>Categoría</th>
-              <th>Stock actual</th>
-              <th>Cobertura (días)</th>
-              <th>Valor inmovilizado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((product) => (
-              <tr key={product.productId}>
-                <td>
-                  {onSelectProduct ? (
-                    <button
-                      type="button"
-                      className="link-button"
-                      onClick={() => onSelectProduct(product.productId, product.storeId)}
-                    >
-                      {product.sku}
-                    </button>
-                  ) : (
-                    product.sku
-                  )}
-                </td>
-                <td>{product.productName}</td>
-                <td>#{product.categoryId}</td>
-                <td>{product.currentStock}</td>
-                <td>{product.currentDaysOfCoverage.toFixed(1)}</td>
-                <td>{currencyFormatter.format(product.immobilizedValue)}</td>
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>Producto</th>
+                <th>Categoría</th>
+                <th>Stock actual</th>
+                <th>Cobertura (días)</th>
+                <th>Valor inmovilizado</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {products.map((product) => (
+                <tr key={product.productId}>
+                  <td>
+                    {onSelectProduct ? (
+                      <button
+                        type="button"
+                        className="link-button"
+                        onClick={() => onSelectProduct(product.productId, product.storeId)}
+                      >
+                        {product.sku}
+                      </button>
+                    ) : (
+                      product.sku
+                    )}
+                  </td>
+                  <td>{product.productName}</td>
+                  <td>#{product.categoryId}</td>
+                  <td>{product.currentStock}</td>
+                  <td>{product.currentDaysOfCoverage.toFixed(1)}</td>
+                  <td>{currencyFormatter.format(product.immobilizedValue)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </main>
   )

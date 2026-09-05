@@ -15,22 +15,24 @@ function RejectionsTable({ rejections }: { rejections: RowRejection[] }) {
   if (rejections.length === 0) return null
 
   return (
-    <table className="data-table">
-      <thead>
-        <tr>
-          <th>Fila</th>
-          <th>Motivo</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rejections.map((rejection) => (
-          <tr key={rejection.rowNumber}>
-            <td>{rejection.rowNumber}</td>
-            <td>{rejection.reason}</td>
+    <div className="table-scroll">
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th>Fila</th>
+            <th>Motivo</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {rejections.map((rejection) => (
+            <tr key={rejection.rowNumber}>
+              <td>{rejection.rowNumber}</td>
+              <td>{rejection.reason}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }
 
@@ -170,31 +172,33 @@ function RecalculateSection() {
       )}
 
       {result && (
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Sucursal</th>
-              <th>Críticos</th>
-              <th>Sobrestock</th>
-              <th>Alertas</th>
-              <th>Recomendaciones (nuevas / actualizadas / auto-descartadas)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {result.perStore.map((store) => (
-              <tr key={store.storeId}>
-                <td>{storeName(store.storeId)}</td>
-                <td>{store.criticalProductsFound}</td>
-                <td>{store.overstockProductsFound}</td>
-                <td>{store.alertsGenerated}</td>
-                <td>
-                  {store.recommendations.totalGenerated} ({store.recommendations.newCount} /{' '}
-                  {store.recommendations.updatedCount} / {store.recommendations.autoDiscardedCount})
-                </td>
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Sucursal</th>
+                <th>Críticos</th>
+                <th>Sobrestock</th>
+                <th>Alertas</th>
+                <th>Recomendaciones (nuevas / actualizadas / auto-descartadas)</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {result.perStore.map((store) => (
+                <tr key={store.storeId}>
+                  <td>{storeName(store.storeId)}</td>
+                  <td>{store.criticalProductsFound}</td>
+                  <td>{store.overstockProductsFound}</td>
+                  <td>{store.alertsGenerated}</td>
+                  <td>
+                    {store.recommendations.totalGenerated} ({store.recommendations.newCount} /{' '}
+                    {store.recommendations.updatedCount} / {store.recommendations.autoDiscardedCount})
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </section>
   )

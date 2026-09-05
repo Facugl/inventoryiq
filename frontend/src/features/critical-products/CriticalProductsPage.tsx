@@ -130,48 +130,50 @@ export function CriticalProductsPage({ onSelectProduct }: CriticalProductsPagePr
       )}
 
       {products && products.length > 0 && (
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>SKU</th>
-              <th>Producto</th>
-              <th>Categoría</th>
-              <th>Stock actual</th>
-              <th>Punto de pedido</th>
-              <th>Cobertura (días)</th>
-              <th>Estado</th>
-              <th>Score</th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((product) => (
-              <tr key={product.productId}>
-                <td>
-                  {onSelectProduct ? (
-                    <button
-                      type="button"
-                      className="link-button"
-                      onClick={() => onSelectProduct(product.productId, product.storeId)}
-                    >
-                      {product.sku}
-                    </button>
-                  ) : (
-                    product.sku
-                  )}
-                </td>
-                <td>{product.productName}</td>
-                <td>#{product.categoryId}</td>
-                <td>{product.currentStock}</td>
-                <td>{product.reorderPointUnits.toFixed(1)}</td>
-                <td>{product.currentDaysOfCoverage.toFixed(1)}</td>
-                <td>
-                  <span className={statusClassName(product.status)}>{STATUS_LABELS[product.status]}</span>
-                </td>
-                <td>{product.criticalityScore.toFixed(0)}</td>
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>Producto</th>
+                <th>Categoría</th>
+                <th>Stock actual</th>
+                <th>Punto de pedido</th>
+                <th>Cobertura (días)</th>
+                <th>Estado</th>
+                <th>Score</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {products.map((product) => (
+                <tr key={product.productId}>
+                  <td>
+                    {onSelectProduct ? (
+                      <button
+                        type="button"
+                        className="link-button"
+                        onClick={() => onSelectProduct(product.productId, product.storeId)}
+                      >
+                        {product.sku}
+                      </button>
+                    ) : (
+                      product.sku
+                    )}
+                  </td>
+                  <td>{product.productName}</td>
+                  <td>#{product.categoryId}</td>
+                  <td>{product.currentStock}</td>
+                  <td>{product.reorderPointUnits.toFixed(1)}</td>
+                  <td>{product.currentDaysOfCoverage.toFixed(1)}</td>
+                  <td>
+                    <span className={statusClassName(product.status)}>{STATUS_LABELS[product.status]}</span>
+                  </td>
+                  <td>{product.criticalityScore.toFixed(0)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </main>
   )

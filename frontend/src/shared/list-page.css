@@ -3,6 +3,12 @@
   text-align: left;
 }
 
+@media (max-width: 640px) {
+  .page {
+    padding: 16px;
+  }
+}
+
 .page-header h1 {
   font-size: 32px;
   margin: 0 0 8px;
@@ -72,6 +78,10 @@
   background: var(--code-bg);
 }
 
+.table-scroll {
+  overflow-x: auto;
+}
+
 .data-table {
   width: 100%;
   border-collapse: collapse;
@@ -83,6 +93,7 @@
   text-align: left;
   padding: 10px 12px;
   border-bottom: 1px solid var(--border);
+  white-space: nowrap;
 }
 
 .data-table th {

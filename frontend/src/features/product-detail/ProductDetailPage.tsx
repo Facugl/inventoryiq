@@ -167,28 +167,30 @@ export function ProductDetailPage({ initialSelection }: ProductDetailPageProps) 
           ) : (
             <>
               <p>Venta promedio diaria base: {decimalFormatter.format(forecast.baseAds)} unidades/día</p>
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Desde</th>
-                    <th>Hasta</th>
-                    <th>Índice estacional</th>
-                    <th>ADS proyectado</th>
-                    <th>Demanda proyectada</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {forecast.periods.map((period) => (
-                    <tr key={period.periodStart}>
-                      <td>{period.periodStart}</td>
-                      <td>{period.periodEnd}</td>
-                      <td>{decimalFormatter.format(period.seasonalIndex)}</td>
-                      <td>{decimalFormatter.format(period.projectedDailyAds)}</td>
-                      <td>{period.projectedTotalDemand}</td>
+              <div className="table-scroll">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Desde</th>
+                      <th>Hasta</th>
+                      <th>Índice estacional</th>
+                      <th>ADS proyectado</th>
+                      <th>Demanda proyectada</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {forecast.periods.map((period) => (
+                      <tr key={period.periodStart}>
+                        <td>{period.periodStart}</td>
+                        <td>{period.periodEnd}</td>
+                        <td>{decimalFormatter.format(period.seasonalIndex)}</td>
+                        <td>{decimalFormatter.format(period.projectedDailyAds)}</td>
+                        <td>{period.projectedTotalDemand}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </>
           )}
         </>
