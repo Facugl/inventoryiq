@@ -86,7 +86,7 @@ avanzar a la siguiente.
 
 **Definition of Done:** Postman/curl contra cada endpoint devuelve JSON válido y consistente con lo que viste en la Fase 2-3.
 
-**Estado: COMPLETADA y ampliada.** 18 casos de uso expuestos vía REST (ver `docs/InventoryIQ_Arquitectura.md` Tabla 1.3), varios sin endpoint documentado en la Sección 8 original (búsqueda de productos, sucursales, categorías, conteo manual de inventario, clasificación ABC/XYZ, forecast, reorder suggestions, y ahora proveedores). Documentación OpenAPI vía springdoc-openapi: Swagger UI interactiva en `/swagger-ui/index.html` y el JSON crudo en `/v3/api-docs`, con cada controller anotado (`@Tag`/`@Operation`) agrupado por área funcional.
+**Estado: COMPLETADA y ampliada.** 19 casos de uso expuestos vía REST (ver `docs/InventoryIQ_Arquitectura.md` Tabla 1.3), varios sin endpoint documentado en la Sección 8 original (búsqueda de productos, sucursales, categorías, conteo manual de inventario, clasificación ABC/XYZ, forecast, reorder suggestions, y proveedores). `PATCH /api/v1/categories/{id}/parameters` (Sección 8.10) sí estaba documentado desde el diseño original y ahora también está implementado. Documentación OpenAPI vía springdoc-openapi: Swagger UI interactiva en `/swagger-ui/index.html` y el JSON crudo en `/v3/api-docs`, con cada controller anotado (`@Tag`/`@Operation`) agrupado por área funcional.
 
 ---
 
@@ -103,7 +103,7 @@ avanzar a la siguiente.
 
 **Definition of Done:** un responsable de compras ficticio puede abrir el dashboard y, sin explicación adicional, entender qué comprar hoy y por qué.
 
-**Estado: COMPLETADA y ampliada a 9 pantallas.** Además de las 5 originales, se sumaron Alertas, Recomendaciones (con feedback aplicada/descartada), Clasificación ABC/XYZ y Proveedores — adelantadas de v1.1/10.6 porque el backend ya las soportaba (o, en el caso de Proveedores, un recorte acotado a lo que hay dato real para soportar: ver Sección 8.11 de `InventoryIQ_Documentacion.md`). Detalle de Producto quedó acotado a la proyección de demanda, no a la ficha completa con histórico que describe la Sección 8.2. Administración también ganó una sección de "Conteo de stock" no prevista originalmente (ver Sección 8.16 de `InventoryIQ_Documentacion.md`).
+**Estado: COMPLETADA y ampliada a 9 pantallas.** Además de las 5 originales, se sumaron Alertas, Recomendaciones (con feedback aplicada/descartada), Clasificación ABC/XYZ y Proveedores — adelantadas de v1.1/10.6 porque el backend ya las soportaba (o, en el caso de Proveedores, un recorte acotado a lo que hay dato real para soportar: ver Sección 8.11 de `InventoryIQ_Documentacion.md`). Detalle de Producto quedó acotado a la proyección de demanda, no a la ficha completa con histórico que describe la Sección 8.2. Administración ganó dos secciones no previstas en el diseño original de la pantalla (aunque "parámetros de negocio por categoría" sí figuraba como contenido esperado, Sección 10.8): "Conteo de stock" (Sección 8.16) y "Parámetros de categorías" (edición del umbral de sobrestock y stock de seguridad extra por categoría, Sección 8.10 — primer punto de la Sección 8 original que pasa de PLANIFICADO a IMPLEMENTADO sin haber sido primero un endpoint "no previsto").
 
 ---
 
@@ -129,7 +129,7 @@ referencia de hacia dónde escala el proyecto una vez cerrado el MVP:
 
 | Versión | Foco | Estado |
 |---|---|---|
-| v1.1 | Alertas configurables, exportación de reportes, matriz ABC-XYZ como heatmap | Parcial: pantallas de Alertas y Clasificación ya existen (adelantadas al MVP), pero sin configurabilidad de umbrales, sin exportación y sin heatmap |
+| v1.1 | Alertas configurables, exportación de reportes, matriz ABC-XYZ como heatmap | Parcial: umbral de sobrestock y stock de seguridad extra ya son configurables por categoría (Sección 8.10, pantalla Administración → "Parámetros de categorías"); las pantallas de Alertas y Clasificación ya existen (adelantadas al MVP), pero sin exportación ni heatmap |
 | v1.2 | Comparativa multi-sucursal, parámetros por categoría+sucursal | No iniciada |
 | v2.0 | ETL real (Python + Pandas) + Data Warehouse en modelo estrella, reemplazando el adaptador CSV por uno Postgres/DW sin tocar el dominio | No iniciada |
 | v3.0 | Forecasting estadístico/ML, estrategia de recomendación por clasificación ABC-XYZ, optimización multi-proveedor | No iniciada |

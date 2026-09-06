@@ -18,7 +18,9 @@ public class ListCategoriesService implements ListCategoriesUseCase {
 	@Override
 	public List<CategoryResult> execute() {
 		return categoryRepository.findAll().stream()
-				.map(category -> new CategoryResult(category.categoryId(), category.name(), category.parentCategoryId()))
+				.map(category -> new CategoryResult(
+						category.categoryId(), category.name(), category.parentCategoryId(),
+						category.maxCoverageDaysThreshold(), category.defaultExtraCoverageDays()))
 				.toList();
 	}
 }

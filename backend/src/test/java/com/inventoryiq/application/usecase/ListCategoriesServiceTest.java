@@ -34,7 +34,7 @@ class ListCategoriesServiceTest {
 		// findAll() no garantiza orden (respaldado por un Map, igual que el
 		// adaptador CSV real): se compara como conjunto.
 		assertEquals(
-				Set.of(new CategoryResult(1L, "Almacén Frío", null), new CategoryResult(2L, "Lácteos", 1L)),
+				Set.of(new CategoryResult(1L, "Almacén Frío", null, 20, 4), new CategoryResult(2L, "Lácteos", 1L, 12, 3)),
 				Set.copyOf(result));
 	}
 
@@ -53,6 +53,11 @@ class ListCategoriesServiceTest {
 		@Override
 		public List<Category> findAll() {
 			return List.copyOf(categories.values());
+		}
+
+		@Override
+		public Category updateParameters(Long categoryId, int maxCoverageDaysThreshold, int defaultExtraCoverageDays) {
+			throw new UnsupportedOperationException("not exercised by this test");
 		}
 	}
 }

@@ -3,8 +3,10 @@ import { ingestCsvFile, CsvIngestionThresholdError } from '../../api/csvIngestio
 import { recalculateProductStatus } from '../../api/productStatus'
 import { recordInventoryCount } from '../../api/inventorySnapshots'
 import { searchProducts } from '../../api/products'
+import { getCategories, updateCategoryParameters } from '../../api/categories'
 import { ApiError } from '../../api/http'
 import type {
+  Category,
   IngestionSummary,
   InventorySnapshot,
   ProductSummary,
@@ -406,6 +408,177 @@ function RecalculateSection({ stores }: { stores: Store[] }) {
   )
 }
 
+function CategoryParametersSection() {
+  const [categories, setCategories] = useState<Category[] | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [draftMaxCoverageDays, setDraftMaxCoverageDays] = useState('')
+  const [draftExtraCoverageDays, setDraftExtraCoverageDays] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [rowError, setRowError] = useState<string | null>(null)
+
+  // Carga inicial. Todo setState ocurre dentro de then/catch (fuera del cuerpo
+  // síncrono del efecto) para no disparar el warning de set-state-in-effect.
+  useEffect(() => {
+    let cancelled = false
+
+    getCategories()
+      .then((result) => {
+        if (!cancelled) setCategories(result)
+      })
+      .catch((err) => {
+        if (!cancelled) setLoadError(genericErrorMessage(err))
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const parentName = (category: Category) =>
+    category.parentCategoryId === null
+      ? '—'
+      : (categories ?? []).find((c) => c.categoryId === category.parentCategoryId)?.name ?? `#${category.parentCategoryId}`
+
+  const startEditing = (category: Category) => {
+    setEditingId(category.categoryId)
+    setDraftMaxCoverageDays(String(category.maxCoverageDaysThreshold))
+    setDraftExtraCoverageDays(String(category.defaultExtraCoverageDays))
+    setRowError(null)
+  }
+
+  const cancelEditing = () => {
+    setEditingId(null)
+    setRowError(null)
+  }
+
+  const saveParameters = (categoryId: number) => {
+    const maxCoverageDaysThreshold = Number(draftMaxCoverageDays)
+    const defaultExtraCoverageDays = Number(draftExtraCoverageDays)
+
+    if (
+      draftMaxCoverageDays === '' ||
+      !Number.isInteger(maxCoverageDaysThreshold) ||
+      maxCoverageDaysThreshold <= 0
+    ) {
+      setRowError('El umbral de sobrestock tiene que ser un número entero mayor a 0.')
+      return
+    }
+
+    if (
+      draftExtraCoverageDays === '' ||
+      !Number.isInteger(defaultExtraCoverageDays) ||
+      defaultExtraCoverageDays < 0
+    ) {
+      setRowError('El stock de seguridad extra tiene que ser un número entero, 0 o más.')
+      return
+    }
+
+    setSaving(true)
+    setRowError(null)
+    updateCategoryParameters(categoryId, { maxCoverageDaysThreshold, defaultExtraCoverageDays })
+      .then((updated) => {
+        setCategories((current) => (current ?? []).map((c) => (c.categoryId === categoryId ? updated : c)))
+        setEditingId(null)
+      })
+      .catch((err) => setRowError(genericErrorMessage(err)))
+      .finally(() => setSaving(false))
+  }
+
+  return (
+    <section>
+      <h2>Parámetros de categorías</h2>
+      <p>
+        Umbral de sobrestock: a partir de cuántos días de cobertura un producto de esa categoría se marca en
+        Sobrestock. Stock de seguridad extra: colchón adicional para calcular el punto de pedido. Se aplican de
+        inmediato en cada cálculo, sin reiniciar el backend.
+      </p>
+
+      {loadError && (
+        <p className="state state-error" role="alert">
+          {loadError}
+        </p>
+      )}
+
+      {!loadError && !categories && <p className="state">Cargando…</p>}
+
+      {categories && (
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Categoría</th>
+                <th>Categoría padre</th>
+                <th>Umbral sobrestock (días)</th>
+                <th>Stock de seguridad extra (días)</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {categories.map((category) => (
+                <tr key={category.categoryId}>
+                  <td>{category.name}</td>
+                  <td>{parentName(category)}</td>
+                  <td>
+                    {editingId === category.categoryId ? (
+                      <input
+                        type="number"
+                        min={1}
+                        value={draftMaxCoverageDays}
+                        onChange={(event) => setDraftMaxCoverageDays(event.target.value)}
+                        autoFocus
+                        className="numeric-input"
+                      />
+                    ) : (
+                      category.maxCoverageDaysThreshold
+                    )}
+                  </td>
+                  <td>
+                    {editingId === category.categoryId ? (
+                      <input
+                        type="number"
+                        min={0}
+                        value={draftExtraCoverageDays}
+                        onChange={(event) => setDraftExtraCoverageDays(event.target.value)}
+                        className="numeric-input"
+                      />
+                    ) : (
+                      category.defaultExtraCoverageDays
+                    )}
+                  </td>
+                  <td className="row-actions">
+                    {editingId === category.categoryId ? (
+                      <>
+                        <button type="button" onClick={() => saveParameters(category.categoryId)} disabled={saving}>
+                          {saving ? 'Guardando…' : 'Guardar'}
+                        </button>
+                        <button type="button" onClick={cancelEditing} disabled={saving}>
+                          Cancelar
+                        </button>
+                      </>
+                    ) : (
+                      <button type="button" onClick={() => startEditing(category)}>
+                        Editar
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {rowError && (
+        <p className="state state-error" role="alert">
+          {rowError}
+        </p>
+      )}
+    </section>
+  )
+}
+
 interface AdminPageProps {
   stores: Store[]
 }
@@ -421,6 +594,7 @@ export function AdminPage({ stores }: AdminPageProps) {
       <InventoryCountSection stores={stores} />
       <CsvIngestionSection />
       <RecalculateSection stores={stores} />
+      <CategoryParametersSection />
     </main>
   )
 }

@@ -9,6 +9,8 @@ public final class CategoryResponseMapper {
 	}
 
 	public static CategoryResponse toResponse(CategoryResult result) {
-		return new CategoryResponse(result.categoryId(), result.name(), result.parentCategoryId());
+		return new CategoryResponse(
+				result.categoryId(), result.name(), result.parentCategoryId(),
+				result.maxCoverageDaysThreshold(), result.defaultExtraCoverageDays());
 	}
 }

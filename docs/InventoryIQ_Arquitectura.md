@@ -52,7 +52,7 @@ Todo componente listado en las tablas siguientes es **IMPLEMENTADO**, verificado
 | `RecommendationsController` | `GET /api/v1/recommendations`, `POST /api/v1/recommendations/recalculate`, `PATCH /api/v1/recommendations/{id}` | `ListRecommendationsUseCase`, `RecalculateRecommendationsUseCase`, `RegisterRecommendationFeedbackUseCase` |
 | `ReorderSuggestionsController` | `GET /api/v1/reorder-suggestions` | `GenerateReorderSuggestionsUseCase` |
 | `StoresController` | `GET /api/v1/stores` | `ListStoresUseCase` |
-| `CategoriesController` | `GET /api/v1/categories` | `ListCategoriesUseCase` |
+| `CategoriesController` | `GET /api/v1/categories`, `PATCH /api/v1/categories/{id}/parameters` | `ListCategoriesUseCase`, `UpdateCategoryParametersUseCase` |
 | `ProductSearchController` | `GET /api/v1/products?q=...` | `SearchProductsUseCase` |
 | `InventorySnapshotsController` | `POST /api/v1/inventory-snapshots` | `RecordInventoryCountUseCase` |
 | `SuppliersController` | `GET /api/v1/suppliers`, `PATCH /api/v1/suppliers/{id}/lead-time` | `ListSuppliersUseCase`, `UpdateSupplierLeadTimeUseCase` |
@@ -78,6 +78,7 @@ Todo componente listado en las tablas siguientes es **IMPLEMENTADO**, verificado
 | `RecalculateProductStatusUseCase` | Store | — | `GetCriticalProductsUseCase`, `DetectOverstockUseCase`, `RecalculateRecommendationsUseCase`, `GenerateAlertsUseCase` |
 | `ListStoresUseCase` | Store | — | — |
 | `ListCategoriesUseCase` | Category | — | — |
+| `UpdateCategoryParametersUseCase` | Category | — | — |
 | `SearchProductsUseCase` | Product | — | — |
 | `RecordInventoryCountUseCase` | Product, Store, InventoryIngestion | — | — |
 | `ListSuppliersUseCase` | Supplier | — | — |
@@ -382,3 +383,51 @@ flowchart TD
 - A diferencia de `CsvInventoryRepositoryAdapter`/`CsvSaleRepositoryAdapter` (que solo agregan filas al final del archivo, sobre registros históricos inmutables), `CsvSupplierRepositoryAdapter.updateLeadTime()` reescribe `proveedores.csv` completo: un proveedor es una entidad mutable que se corrige, no un evento que se acumula. El orden original de las filas se preserva (`LinkedHashMap`) para que corregir un proveedor no reordene el archivo.
 - `SupplierRepository` es un único puerto de salida con lectura y escritura (`findById`, `findAllActive`, `updateLeadTime`) — no está separado en un puerto de ingestión aparte como `SaleIngestionRepository`/`InventoryIngestionRepository`, porque acá no hay "ingesta" de datos nuevos, solo corrección de un dato existente. Mismo criterio que `RecommendationRepository.save()` (upsert sobre Postgres).
 - `GET /api/v1/suppliers` (`ListSuppliersUseCase`) no tiene un diagrama propio: es una traducción directa de `SupplierRepository.findAllActive()`, sin ramas — mismo criterio que `ListStoresUseCase`/`ListCategoriesUseCase`.
+
+---
+
+## 7. Flujo: Corrección de parámetros de una categoría
+
+Flujo del caso de uso `UpdateCategoryParametersUseCase` (impl: `UpdateCategoryParametersService`). Documentado en la Sección 8.10 del diseño original desde el inicio (a diferencia de Proveedores/Conteo de stock, no es un endpoint agregado fuera de diseño) pero marcado PLANIFICADO hasta esta implementación — las categorías eran de solo lectura.
+
+```mermaid
+flowchart TD
+    CLI["Cliente / API REST"]
+    CTRL["CategoriesController<br/>PATCH /api/v1/categories/{id}/parameters<br/>(maxCoverageDaysThreshold, defaultExtraCoverageDays)"]
+    CMD["UpdateCategoryParametersCommand"]
+    UC["UpdateCategoryParametersUseCase"]
+    CHECK{"¿categoría existe?"}
+    NOTFOUND["404 Not Found<br/>(CategoryNotFoundException)"]
+    UPDATE["CategoryRepository.updateParameters(...)"]
+    RESULT["CategoryResult"]
+    RESP["JSON, 200 OK"]
+
+    CSVA["CsvCategoryRepositoryAdapter<br/>reescribe el archivo completo"]
+    CSVFILE[("categorias.csv")]
+
+    CLI --> CTRL --> CMD --> UC --> CHECK
+    CHECK -->|"no"| NOTFOUND
+    CHECK -->|"sí"| UPDATE --> RESULT --> RESP --> CLI
+
+    UPDATE -.->|"responde vía"| CSVA
+    CSVA --> CSVFILE
+
+    classDef entrada fill:#dbeafe,stroke:#2563eb,color:#1e3a8a;
+    classDef aplicacion fill:#fef9c3,stroke:#ca8a04,color:#713f12;
+    classDef dominio fill:#dcfce7,stroke:#16a34a,color:#14532d;
+    classDef salida fill:#fce7f3,stroke:#db2777,color:#831843;
+    classDef infra fill:#f1f5f9,stroke:#64748b,color:#0f172a;
+
+    class CLI,CTRL,NOTFOUND,RESP entrada;
+    class CMD,UC,CHECK,RESULT aplicacion;
+    class UPDATE dominio;
+    class CSVA salida;
+    class CSVFILE infra;
+```
+
+### 7.1 Notas sobre el detalle omitido
+
+- Mismo criterio que `CsvSupplierRepositoryAdapter` (Sección 6): `CsvCategoryRepositoryAdapter.updateParameters()` reescribe `categorias.csv` completo en vez de agregar una fila — una categoría es una entidad mutable, y el orden original se preserva con un `LinkedHashMap`. `CategoryRepository` es un único puerto con lectura y escritura, sin un puerto de ingestión separado.
+- Ambos parámetros corregidos acá se leen en caliente desde `ProductIndicatorsCalculator` (helper compartido por `GetCriticalProductsUseCase`, `DetectOverstockUseCase`, `GenerateReorderSuggestionsUseCase`, etc.) en cada request — no hay caché ni estado derivado que invalidar: el efecto es inmediato.
+- La reescritura normaliza el formato numérico: `categorias.csv` traía los umbrales como decimales (`"20.0"`, herencia del generador de datos simulados) y el dominio los modela como `int` (`CsvFieldParsers.parseIntFromDecimal` tolera ambos formatos al leer). Tras la primera corrección a cualquier categoría, el archivo completo queda reescrito con enteros (`"20"`) — un cambio de formato sin efecto funcional, pero visible si se compara el CSV antes/después a mano.
+- `maxCoverageDaysThreshold`/`defaultExtraCoverageDays` no incluyen los pesos del score de criticidad (`CriticalityEvaluator.CriticalityWeights`, Sección 9.1): esos siguen siendo un único valor global configurado en `UseCaseConfig`, no por categoría ni vía API.

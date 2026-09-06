@@ -226,6 +226,11 @@ class GetCriticalProductsServiceTest {
 		public List<Category> findAll() {
 			return List.copyOf(categories.values());
 		}
+
+		@Override
+		public Category updateParameters(Long categoryId, int maxCoverageDaysThreshold, int defaultExtraCoverageDays) {
+			throw new UnsupportedOperationException("not exercised by this test");
+		}
 	}
 
 	private static class FakeSaleRepository implements SaleRepository {

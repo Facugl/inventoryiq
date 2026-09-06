@@ -4,11 +4,18 @@ export interface Store {
   name: string
 }
 
-/** Forma de CategoryResponse (GET /api/v1/categories). parentCategoryId es null para categorías raíz. */
+/**
+ * Forma de CategoryResponse (GET /api/v1/categories, PATCH .../parameters).
+ * parentCategoryId es null para categorías raíz. maxCoverageDaysThreshold y
+ * defaultExtraCoverageDays son los parámetros de negocio editables desde
+ * Administración (Sección 8.10).
+ */
 export interface Category {
   categoryId: number
   name: string
   parentCategoryId: number | null
+  maxCoverageDaysThreshold: number
+  defaultExtraCoverageDays: number
 }
 
 /** Sección 4.12 de la documentación — máquina de estados de un producto (backend: domain.model.ProductStatus). */

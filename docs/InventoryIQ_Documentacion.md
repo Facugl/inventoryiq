@@ -972,21 +972,21 @@ Todos los endpoints se exponen bajo el prefijo `/api/v1`. El formato de intercam
 
 **Casos de uso:** filtros del dashboard, pantalla de configuración de parámetros.
 
-**Nota de implementación:** el endpoint real es `GET /api/v1/categories` (inglés, consistente con el resto de la API implementada) y hoy solo devuelve `categoryId`, `name` y `parentCategoryId` — sin los parámetros de cobertura que describe este punto, que siguen viviendo solo en `categorias.csv`/`CategoryRepository` sin exponerse vía API. Ver `docs/InventoryIQ_Arquitectura.md` Sección 1.3.
+**Nota de implementación:** el endpoint real es `GET /api/v1/categories` (inglés, consistente con el resto de la API implementada). Devuelve `categoryId`, `name`, `parentCategoryId`, y también `maxCoverageDaysThreshold`/`defaultExtraCoverageDays` — los parámetros de cobertura viven en `categorias.csv`/`CategoryRepository` y ahora se exponen vía API (ver 8.10), no solo se leen internamente.
 
-## 8.10 `PATCH /api/v1/categorias/{categoriaId}/parametros`
+## 8.10 `PATCH /api/v1/categories/{categoryId}/parameters`
 
-**Objetivo:** ajustar los parámetros de negocio configurables por categoría (umbral máximo de cobertura, días de cobertura extra, pesos del score de criticidad si se gestionan a este nivel).
+**Objetivo:** ajustar los parámetros de negocio configurables por categoría: `maxCoverageDaysThreshold` (umbral máximo de cobertura, en días, a partir del cual `DetectOverstockUseCase` marca un producto de esta categoría como Sobrestock) y `defaultExtraCoverageDays` (colchón adicional de stock de seguridad que usa `SafetyStockCalculator`). No incluye pesos del score de criticidad — esos siguen siendo un único valor global (`CriticalityEvaluator.CriticalityWeights`), no configurable por categoría ni vía API.
 
-**Request (body):** parámetros a modificar.
+**Request (body):** `maxCoverageDaysThreshold` (entero, mayor a 0), `defaultExtraCoverageDays` (entero, 0 o más).
 
-**Response:** categoría actualizada.
+**Response:** categoría actualizada, misma forma que un elemento del listado de 8.9.
 
-**Casos de uso:** pantalla de configuración/administración.
+**Casos de uso:** pantalla de Administración → "Parámetros de categorías" — corregir la sensibilidad de las alertas de Sobrestock por categoría sin editar `categorias.csv` a mano ni reiniciar el backend.
 
-**Errores:** 404 si la categoría no existe; 400 si algún parámetro está fuera de rango válido (ej. umbral negativo).
+**Errores:** 404 si la categoría no existe; 400 si algún parámetro está fuera de rango válido.
 
-**Estado: PLANIFICADO.** No implementado — las categorías son de solo lectura (ver 8.9).
+**Estado: IMPLEMENTADO.** `CategoryRepository` extendido con `updateParameters` (mismo criterio que `SupplierRepository`: un único puerto de lectura+escritura sobre una entidad mutable, no un puerto de ingestión separado), `UpdateCategoryParametersUseCase`, expuesto en `CategoriesController`. Ambos parámetros se leen en caliente desde `ProductIndicatorsCalculator` en cada request de Productos Críticos/Sobrestock — corregirlos acá surte efecto de inmediato, sin recalcular ni reiniciar nada.
 
 ## 8.11 `GET /api/v1/suppliers` y `PATCH /api/v1/suppliers/{supplierId}/lead-time`
 

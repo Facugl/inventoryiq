@@ -1,4 +1,4 @@
-.lead-time-input {
+.numeric-input {
   width: 72px;
   font: inherit;
   padding: 4px 8px;
@@ -8,13 +8,13 @@
   color: var(--text-h);
 }
 
-.supplier-actions {
+.row-actions {
   display: flex;
   gap: 8px;
   white-space: nowrap;
 }
 
-.supplier-actions button {
+.row-actions button {
   font: inherit;
   padding: 6px 12px;
   border: none;
@@ -24,7 +24,7 @@
   cursor: pointer;
 }
 
-.supplier-actions button:disabled {
+.row-actions button:disabled {
   opacity: 0.6;
   cursor: default;
 }

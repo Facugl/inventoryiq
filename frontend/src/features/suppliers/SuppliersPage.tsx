@@ -113,14 +113,14 @@ export function SuppliersPage() {
                         value={draftLeadTime}
                         onChange={(event) => setDraftLeadTime(event.target.value)}
                         autoFocus
-                        className="lead-time-input"
+                        className="numeric-input"
                       />
                     ) : (
                       supplier.leadTimeDays
                     )}
                   </td>
                   <td>{supplier.paymentTerms}</td>
-                  <td className="supplier-actions">
+                  <td className="row-actions">
                     {editingId === supplier.supplierId ? (
                       <>
                         <button type="button" onClick={() => saveLeadTime(supplier.supplierId)} disabled={saving}>

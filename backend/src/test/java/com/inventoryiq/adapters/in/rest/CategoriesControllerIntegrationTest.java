@@ -39,6 +39,8 @@ class CategoriesControllerIntegrationTest {
 				.andExpect(jsonPath("$.length()").value(14))
 				.andExpect(jsonPath("$[?(@.categoryId == 1)].name").value(contains("Almacén Frío")))
 				.andExpect(jsonPath("$[?(@.categoryId == 2)].name").value(contains("Lácteos")))
-				.andExpect(jsonPath("$[?(@.categoryId == 2)].parentCategoryId").value(contains(1)));
+				.andExpect(jsonPath("$[?(@.categoryId == 2)].parentCategoryId").value(contains(1)))
+				.andExpect(jsonPath("$[?(@.categoryId == 2)].maxCoverageDaysThreshold").value(contains(12)))
+				.andExpect(jsonPath("$[?(@.categoryId == 2)].defaultExtraCoverageDays").value(contains(3)));
 	}
 }

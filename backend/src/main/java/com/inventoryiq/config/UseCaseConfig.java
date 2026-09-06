@@ -17,6 +17,7 @@ import com.inventoryiq.application.port.in.RecalculateRecommendationsUseCase;
 import com.inventoryiq.application.port.in.RecordInventoryCountUseCase;
 import com.inventoryiq.application.port.in.RegisterRecommendationFeedbackUseCase;
 import com.inventoryiq.application.port.in.SearchProductsUseCase;
+import com.inventoryiq.application.port.in.UpdateCategoryParametersUseCase;
 import com.inventoryiq.application.port.in.UpdateSupplierLeadTimeUseCase;
 import com.inventoryiq.application.port.out.CategoryRepository;
 import com.inventoryiq.application.port.out.InventoryIngestionRepository;
@@ -44,6 +45,7 @@ import com.inventoryiq.application.usecase.RecalculateRecommendationsService;
 import com.inventoryiq.application.usecase.RecordInventoryCountService;
 import com.inventoryiq.application.usecase.RegisterRecommendationFeedbackService;
 import com.inventoryiq.application.usecase.SearchProductsService;
+import com.inventoryiq.application.usecase.UpdateCategoryParametersService;
 import com.inventoryiq.application.usecase.UpdateSupplierLeadTimeService;
 import com.inventoryiq.domain.service.CriticalityEvaluator;
 import org.springframework.context.annotation.Bean;
@@ -173,6 +175,11 @@ public class UseCaseConfig {
 	@Bean
 	public ListCategoriesUseCase listCategoriesUseCase(CategoryRepository categoryRepository) {
 		return new ListCategoriesService(categoryRepository);
+	}
+
+	@Bean
+	public UpdateCategoryParametersUseCase updateCategoryParametersUseCase(CategoryRepository categoryRepository) {
+		return new UpdateCategoryParametersService(categoryRepository);
 	}
 
 	@Bean
