@@ -2,13 +2,13 @@
 
 Este documento representa exclusivamente el estado **IMPLEMENTADO y verificable** del repositorio en el momento de esta auditoría. No incluye funcionalidades PLANIFICADAS (definidas en `docs/InventoryIQ_Documentacion.md` o `docs/InventoryIQ_Roadmap.md` pero aún sin código) ni PROPUESTAS. Cada componente y relación fue verificado directamente contra el código fuente, la configuración y las migraciones del backend.
 
-Se organiza en dos niveles: la Sección 1 da la vista general por capas del backend; las Secciones 2 a 4 detallan, punta a punta, los tres flujos de negocio más relevantes para entender cómo se orquestan casos de uso, dominio y adaptadores en la práctica.
+Se organiza en dos niveles: la Sección 1 da la vista general por capas del backend; las Secciones 2 a 5 detallan, punta a punta, los cuatro flujos de negocio más relevantes para entender cómo se orquestan casos de uso, dominio y adaptadores en la práctica.
 
 ---
 
 ## 1. Vista general por capas
 
-La arquitectura por capas (Entrada → Application → Domain → Salida) se documenta en tablas en vez de en un diagrama: con 11 controllers, 13 use cases, 7 output ports y 13 servicios de dominio, un diagrama que los incluya a todos deja de ser legible sin importar cuánto se colapse. El único diagrama de esta sección es el de orquestación entre casos de uso, porque es la única relación de esa capa que una tabla no muestra bien.
+La arquitectura por capas (Entrada → Application → Domain → Salida) se documenta en tablas en vez de en un diagrama: con 15 controllers, 16 use cases, 8 output ports y 13 servicios de dominio, un diagrama que los incluya a todos deja de ser legible sin importar cuánto se colapse. El único diagrama de esta sección es el de orquestación entre casos de uso, porque es la única relación de esa capa que una tabla no muestra bien.
 
 ### 1.1 Diagrama de orquestación entre casos de uso
 
@@ -30,7 +30,9 @@ flowchart LR
 
 Esta documentación representa la arquitectura actualmente implementada del **backend** de InventoryIQ y sus adaptadores: la capa REST, la Application Layer (Input Ports, Use Cases y Output Ports), el núcleo de Domain, los adaptadores de salida CSV y PostgreSQL, la configuración/wiring de Spring y el job programado.
 
-Queda explícitamente **fuera de alcance** por no tener evidencia de implementación en el repositorio: el frontend React (actualmente solo el scaffold por defecto de Vite, sin componentes propios de InventoryIQ), el proceso ETL (Python + Pandas), el Data Warehouse en modelo estrella, y cualquier otra funcionalidad descrita en `docs/InventoryIQ_Documentacion.md` o `docs/InventoryIQ_Roadmap.md` que aún no exista en código (por ejemplo: ingesta CSV de compras/inventario/productos/proveedores/categorías/sucursales — hoy limitada a `SALES`; endpoints de catálogo, categorías, proveedores y sucursales; persistencia de la clasificación ABC/XYZ).
+Queda explícitamente **fuera de alcance** de este documento (que solo cubre backend) el frontend React — que ya no es un scaffold vacío: tiene 8 pantallas funcionando (Inicio, Alertas, Productos Críticos, Sobrestock, Recomendaciones, Detalle de Producto, Clasificación ABC/XYZ, Administración) consumiendo esta misma API, pero su arquitectura interna no se documenta acá.
+
+También queda fuera por no tener evidencia de implementación en el repositorio: el proceso ETL (Python + Pandas), el Data Warehouse en modelo estrella, y cualquier otra funcionalidad descrita en `docs/InventoryIQ_Documentacion.md` o `docs/InventoryIQ_Roadmap.md` que aún no exista en código (por ejemplo: ingesta CSV de compras/inventario/productos/proveedores — hoy limitada a `SALES`; catálogo y análisis de proveedores; persistencia de la clasificación ABC/XYZ; configuración de parámetros de categoría vía API).
 
 Todo componente listado en las tablas siguientes es **IMPLEMENTADO**, verificado contra código fuente, configuración de Spring y migraciones Flyway existentes.
 
@@ -49,6 +51,10 @@ Todo componente listado en las tablas siguientes es **IMPLEMENTADO**, verificado
 | `ProductStatusController` | `POST /api/v1/product-status/recalculate` | `RecalculateProductStatusUseCase` |
 | `RecommendationsController` | `GET /api/v1/recommendations`, `POST /api/v1/recommendations/recalculate`, `PATCH /api/v1/recommendations/{id}` | `ListRecommendationsUseCase`, `RecalculateRecommendationsUseCase`, `RegisterRecommendationFeedbackUseCase` |
 | `ReorderSuggestionsController` | `GET /api/v1/reorder-suggestions` | `GenerateReorderSuggestionsUseCase` |
+| `StoresController` | `GET /api/v1/stores` | `ListStoresUseCase` |
+| `CategoriesController` | `GET /api/v1/categories` | `ListCategoriesUseCase` |
+| `ProductSearchController` | `GET /api/v1/products?q=...` | `SearchProductsUseCase` |
+| `InventorySnapshotsController` | `POST /api/v1/inventory-snapshots` | `RecordInventoryCountUseCase` |
 | `ProductStatusScheduledJob` | cron (`inventoryiq.scheduling.recalculate-product-status-cron`, default `0 0 2 * * *`) | `RecalculateProductStatusUseCase` |
 
 `GlobalExceptionHandler` (`@RestControllerAdvice`) traduce las excepciones de dominio lanzadas por cualquiera de estos flujos a códigos HTTP (400/404/422), de forma transversal.
@@ -69,6 +75,10 @@ Todo componente listado en las tablas siguientes es **IMPLEMENTADO**, verificado
 | `CalculateInventoryKPIsUseCase` | Product, Category, Sale, Inventory, Recommendation | `InventoryTurnoverCalculator`, `ProductIndicatorsCalculator` | `DetectOverstockUseCase` |
 | `IngestCsvFileUseCase` | Product, Store, SaleIngestion | — | — |
 | `RecalculateProductStatusUseCase` | Store | — | `GetCriticalProductsUseCase`, `DetectOverstockUseCase`, `RecalculateRecommendationsUseCase`, `GenerateAlertsUseCase` |
+| `ListStoresUseCase` | Store | — | — |
+| `ListCategoriesUseCase` | Category | — | — |
+| `SearchProductsUseCase` | Product | — | — |
+| `RecordInventoryCountUseCase` | Product, Store, InventoryIngestion | — | — |
 
 `ProductIndicatorsCalculator` es un helper compartido (`usecase/shared`), no un Output Port ni un servicio de dominio propio; internamente usa `AdsCalculator`, `DailySalesRecordAssembler`, `OverstockDetector`, `ProductStatusEvaluator`, `ReorderPointCalculator` y `SafetyStockCalculator`.
 
@@ -79,7 +89,7 @@ Todo componente listado en las tablas siguientes es **IMPLEMENTADO**, verificado
 | `ProductRepository` | `CsvProductRepositoryAdapter` | `productos.csv` |
 | `CategoryRepository` | `CsvCategoryRepositoryAdapter` | `categorias.csv` |
 | `SaleRepository` / `SaleIngestionRepository` | `CsvSaleRepositoryAdapter` (implementa ambos) | `ventas.csv` |
-| `InventoryRepository` | `CsvInventoryRepositoryAdapter` | `inventario.csv` |
+| `InventoryRepository` / `InventoryIngestionRepository` | `CsvInventoryRepositoryAdapter` (implementa ambos) | `inventario.csv` |
 | `StoreRepository` | `CsvStoreRepositoryAdapter` | `sucursales.csv` |
 | `RecommendationRepository` | `PostgresRecommendationRepositoryAdapter` (JdbcTemplate) | tabla `recommendations` (Flyway `V1__create_recommendations_table.sql`) |
 
@@ -270,3 +280,54 @@ flowchart TD
 - **`DUP`** colapsa dos chequeos independientes: `saleIngestionRepository.existsByProductStoreAndDate` (contra lo ya persistido) y una detección en memoria de duplicados dentro del mismo archivo subido (`seenInThisBatch`) — necesaria porque nada se persiste hasta el final de la corrida.
 - El umbral del 5% se toma literalmente del ejemplo de la Sección 7.4 de `InventoryIQ_Documentacion.md`; no hay otro valor sugerido en la documentación, y es una constante fija en `IngestCsvFileService` (`REJECTION_THRESHOLD_PERCENT`), no configurable.
 - Si se supera el umbral, la excepción se lanza **antes** del bloque de persistencia: es todo o nada por corrida, no hay persistencia parcial de las filas aceptadas hasta ese punto.
+
+---
+
+## 5. Flujo: Registro de conteo de stock
+
+Flujo del caso de uso `RecordInventoryCountUseCase` (impl: `RecordInventoryCountService`). Sin endpoint documentado en la Sección 8 de `InventoryIQ_Documentacion.md` — no estaba previsto en el diseño original, que asumía un ETL automático (Sección 7) como única vía de actualización de inventario. Se agregó porque, en el proceso real relevado con el usuario, el export de stock del POS llega desactualizado (no se carga a tiempo cuando entra mercadería de un proveedor): el conteo físico manual, hecho antes de emitir un pedido, es la fuente confiable real.
+
+```mermaid
+flowchart TD
+    CLI["Cliente / API REST"]
+    CTRL["InventorySnapshotsController<br/>POST /api/v1/inventory-snapshots<br/>(productId, storeId, stockActual)"]
+    CMD["RecordInventoryCountCommand<br/>(countDate resuelto por Clock,<br/>nunca del request)"]
+    UC["RecordInventoryCountUseCase"]
+    PCHECK{"¿producto existe?"}
+    SCHECK{"¿sucursal existe?"}
+    NOTFOUND["404 Not Found<br/>(ProductNotFoundException /<br/>StoreNotFoundException)"]
+    SAVE["InventoryIngestionRepository.save(...)<br/>stockInTransit siempre 0"]
+    RESULT["InventorySnapshotResult"]
+    RESP["JSON, 200 OK"]
+
+    CSVA["CsvInventoryRepositoryAdapter"]
+    CSVFILE[("inventario.csv")]
+
+    CLI --> CTRL --> CMD --> UC --> PCHECK
+    PCHECK -->|"no"| NOTFOUND
+    PCHECK -->|"sí"| SCHECK
+    SCHECK -->|"no"| NOTFOUND
+    SCHECK -->|"sí"| SAVE --> RESULT --> RESP --> CLI
+
+    SAVE -.->|"responde vía"| CSVA
+    CSVA --> CSVFILE
+
+    classDef entrada fill:#dbeafe,stroke:#2563eb,color:#1e3a8a;
+    classDef aplicacion fill:#fef9c3,stroke:#ca8a04,color:#713f12;
+    classDef dominio fill:#dcfce7,stroke:#16a34a,color:#14532d;
+    classDef salida fill:#fce7f3,stroke:#db2777,color:#831843;
+    classDef infra fill:#f1f5f9,stroke:#64748b,color:#0f172a;
+
+    class CLI,CTRL,NOTFOUND,RESP entrada;
+    class CMD,UC,PCHECK,SCHECK,RESULT aplicacion;
+    class SAVE dominio;
+    class CSVA salida;
+    class CSVFILE infra;
+```
+
+### 5.1 Notas sobre el detalle omitido
+
+- `inventoryId` no lo elige quien llama: a diferencia de una venta ingerida vía CSV (que trae su propio `venta_id` en la fila), un conteo manual no tiene un id externo — lo genera `CsvInventoryRepositoryAdapter` (máximo id existente + contador en memoria) dentro de `save()`.
+- `stockInTransit` siempre se registra en `0`: un conteo físico releva lo que hay parado en el depósito/góndola, no "lo que está en camino" de un proveedor — `RecordInventoryCountCommand` ni siquiera recibe ese dato como parámetro.
+- Mismo criterio de integridad referencial que `IngestCsvFileService` usa para ventas (verificar que `producto_id`/`sucursal_id` existan), pero acá cada chequeo fallido corta la ejecución con un 404 en vez de acumularse como un rechazo de fila — es un registro puntual, no un lote.
+- `GET /api/v1/products?q=...` (`SearchProductsUseCase`) no tiene un flujo dedicado en este documento: es un filtro en memoria de una sola pasada sobre `ProductRepository.findAllActive()` (por código en `Product.sku` o por nombre, sin distinguir mayúsculas), sin ramas ni casos de descarte que justifiquen un diagrama propio. Lo usa la pantalla de conteo de stock del frontend para resolver un producto por código de barras, código interno corto, o nombre, sin que quien carga el dato tenga que conocer el `productId` numérico.

@@ -8,13 +8,15 @@ avanzar a la siguiente.
 
 **Duración estimada total (part-time, proyecto de portfolio):** 8 a 12 semanas.
 
+**Estado general (actualizado):** las Fases 0 a 6 están completas (con algunos entregables puntuales sin cerrar, marcados en cada una) y el proyecto ya avanzó bastante más allá del alcance original de este roadmap — ver `docs/InventoryIQ_Arquitectura.md` para el detalle auditado contra código. La sección "Próximo paso concreto" al final refleja el estado real, no el original.
+
 ---
 
 ## Fase 0 — Preparación del entorno (ya en curso)
 
 **Objetivo:** tener los datos y el entorno de trabajo listos antes de escribir una línea de dominio.
 
-- [x] Datos CSV simulados generados (`productos`, `categorías`, `proveedores`, `sucursales`, `ventas`, `compras`, `inventario`, `movimientos`).
+- [x] Datos CSV simulados generados (`productos`, `categorías`, `proveedores`, `sucursales`, `ventas`, `compras`, `inventario`, `movimientos`). `sucursales.csv` tiene 1 de las 3 sucursales marcada inactiva, para reflejar que el despliegue real del usuario es de 2 sucursales.
 - [x] Repositorio Git creado, con estructura de carpetas por capa hexagonal (`domain`, `application`, `adapters/in`, `adapters/out`).
 - [x] Docker Compose base con PostgreSQL (aunque el MVP arranque con CSV, la persistencia operacional ya vive en Postgres desde el día 1, según 2.6 y 12.1).
 - [x] Decidir versión de Java/Spring Boot y de Node/React, y dejarlas fijadas (`.tool-versions`, `pom.xml`, `package.json`).
@@ -38,6 +40,8 @@ avanzar a la siguiente.
 
 **Definition of Done:** suite de tests unitarios en verde, cobertura razonable sobre `domain/`, cero imports de Spring/JPA/CSV en ese paquete.
 
+**Estado: COMPLETADA**, con una diferencia de alcance: `Proveedor` (`Supplier`) y `MovimientoDeStock` (`StockMovement`) sí existen como entidades de dominio, pero sin servicio de dominio ni caso de uso propio — quedaron sin conectar (ver Fase 2). `RecomendacionDeCompra` (`Recommendation`) sí está completa y en uso.
+
 ---
 
 ## Fase 2 — Puertos y adaptadores CSV (ingesta de datos)
@@ -52,6 +56,8 @@ avanzar a la siguiente.
 
 **Definition of Done:** con los 8 CSV cargados, podés ejecutar `GenerarRecomendacionesDeCompraUseCase` desde un test de integración y obtener una lista de recomendaciones coherente (podés cruzarla a mano contra 2-3 productos que ya viste en el análisis exploratorio de los CSV).
 
+**Estado: COMPLETADA para 5 de los 6 puertos.** `ProductRepository`, `SaleRepository` (+ `SaleIngestionRepository`), `InventoryRepository` (+ `InventoryIngestionRepository`, agregado después para conteos manuales), `CategoryRepository` y `StoreRepository` existen con sus adaptadores CSV. `ProveedorRepository` y `CompraRepository` **no existen** — no hay caso de uso implementado que los necesite (ver Sección 8.11 de `InventoryIQ_Documentacion.md`), y en el proceso real del usuario las compras se coordinan por WhatsApp, sin ningún sistema del que importarlas.
+
 ---
 
 ## Fase 3 — Persistencia operacional en PostgreSQL
@@ -65,6 +71,8 @@ avanzar a la siguiente.
 
 **Definition of Done:** correr el recálculo dos veces en días distintos deja dos snapshots distintos en Postgres, consultables por fecha.
 
+**Estado: COMPLETADA**, acotada a recomendaciones: la tabla `recommendations` en Postgres (vía Flyway) persiste cada recálculo, con historial consultable por sucursal/estado. No hay una tabla separada de "parámetros de negocio configurables" ni de "histórico de ejecución de recálculos" como entidades propias — los parámetros de categoría siguen viviendo solo en `categorias.csv`.
+
 ---
 
 ## Fase 4 — API REST
@@ -77,6 +85,8 @@ avanzar a la siguiente.
 - Documentación de la API (OpenAPI/Swagger).
 
 **Definition of Done:** Postman/curl contra cada endpoint devuelve JSON válido y consistente con lo que viste en la Fase 2-3.
+
+**Estado: COMPLETADA y ampliada.** 14 casos de uso expuestos vía REST (ver `docs/InventoryIQ_Arquitectura.md` Tabla 1.3), varios sin endpoint documentado en la Sección 8 original (búsqueda de productos, sucursales, categorías, conteo manual de inventario, clasificación ABC/XYZ, forecast, reorder suggestions). Sin documentación OpenAPI/Swagger todavía — pendiente.
 
 ---
 
@@ -93,6 +103,8 @@ avanzar a la siguiente.
 
 **Definition of Done:** un responsable de compras ficticio puede abrir el dashboard y, sin explicación adicional, entender qué comprar hoy y por qué.
 
+**Estado: COMPLETADA y ampliada a 8 pantallas.** Además de las 5 originales, se sumaron Alertas, Recomendaciones (con feedback aplicada/descartada) y Clasificación ABC/XYZ — adelantadas de v1.1 porque el backend ya las soportaba. Detalle de Producto quedó acotado a la proyección de demanda, no a la ficha completa con histórico que describe la Sección 8.2. Administración también ganó una sección de "Conteo de stock" no prevista originalmente (ver Sección 8.16 de `InventoryIQ_Documentacion.md`).
+
 ---
 
 ## Fase 6 — Contenerización y cierre del MVP
@@ -106,6 +118,8 @@ avanzar a la siguiente.
 
 **Definition of Done:** en una máquina limpia, `docker compose up` + un comando de seed dejan el sistema navegable end-to-end con los datos simulados.
 
+**Estado: COMPLETADA parcialmente.** `docker compose up` levanta backend + frontend + Postgres y el sistema es navegable de punta a punta con los CSV simulados (que ya vienen en el repo, en `data/csv/` — no hace falta un script de seed aparte porque no hay nada que sembrar en una base vacía). Sin un `README.md` de arranque rápido en la raíz del repo todavía.
+
 ---
 
 ## Fases posteriores (fuera del MVP, para cuando quieras seguir)
@@ -113,12 +127,12 @@ avanzar a la siguiente.
 Estas ya están detalladas en la Sección 12 del documento; se resumen acá solo como
 referencia de hacia dónde escala el proyecto una vez cerrado el MVP:
 
-| Versión | Foco |
-|---|---|
-| v1.1 | Alertas configurables, exportación de reportes, matriz ABC-XYZ como heatmap |
-| v1.2 | Comparativa multi-sucursal, parámetros por categoría+sucursal |
-| v2.0 | ETL real (Python + Pandas) + Data Warehouse en modelo estrella, reemplazando el adaptador CSV por uno Postgres/DW sin tocar el dominio |
-| v3.0 | Forecasting estadístico/ML, estrategia de recomendación por clasificación ABC-XYZ, optimización multi-proveedor |
+| Versión | Foco | Estado |
+|---|---|---|
+| v1.1 | Alertas configurables, exportación de reportes, matriz ABC-XYZ como heatmap | Parcial: pantallas de Alertas y Clasificación ya existen (adelantadas al MVP), pero sin configurabilidad de umbrales, sin exportación y sin heatmap |
+| v1.2 | Comparativa multi-sucursal, parámetros por categoría+sucursal | No iniciada |
+| v2.0 | ETL real (Python + Pandas) + Data Warehouse en modelo estrella, reemplazando el adaptador CSV por uno Postgres/DW sin tocar el dominio | No iniciada |
+| v3.0 | Forecasting estadístico/ML, estrategia de recomendación por clasificación ABC-XYZ, optimización multi-proveedor | No iniciada |
 
 ---
 
@@ -131,6 +145,22 @@ referencia de hacia dónde escala el proyecto una vez cerrado el MVP:
 
 ## Próximo paso concreto
 
-Con los CSV ya generados, el siguiente paso natural es la **Fase 1**: escribir las
-entidades de dominio y las fórmulas de la Sección 4 como Java puro, con tests
-unitarios armados a mano (no hace falta leer un solo CSV todavía para esta fase).
+Esta sección quedó desactualizada: describía la Fase 1 como punto de partida, pero
+las Fases 0 a 6 ya están completas (ver el estado marcado en cada una). El proyecto
+hoy está en una etapa distinta a la que este roadmap fue escrito para guiar —
+`data/csv/sucursales.csv` ya refleja el despliegue real del usuario (2 sucursales
+activas, no 3), y se agregaron dos capacidades no previstas originalmente: búsqueda
+de productos por código/nombre y registro de conteo manual de stock (Secciones 8.15
+y 8.16 de `InventoryIQ_Documentacion.md`), motivadas por cómo funciona el negocio
+real (compras coordinadas por WhatsApp sin ningún sistema, stock del POS que llega
+desactualizado).
+
+Los próximos pasos concretos, en orden de valor para el uso real del sistema:
+
+1. **Cargar el catálogo real** (`productos.csv`, `categorias.csv`) del usuario en
+   lugar del simulado — es el bloqueante principal para que las recomendaciones dejen
+   de ser un ejercicio con datos ficticios.
+2. **README de arranque rápido** en la raíz del repo (pendiente de Fase 6).
+3. Recién después, evaluar si conviene avanzar hacia v1.1/v1.2 (alertas configurables,
+   multi-sucursal) o directamente hacia v2.0 (ETL real), según qué tan bien funcione
+   el MVP con datos reales.

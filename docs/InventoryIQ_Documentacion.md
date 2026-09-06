@@ -972,6 +972,8 @@ Todos los endpoints se exponen bajo el prefijo `/api/v1`. El formato de intercam
 
 **Casos de uso:** filtros del dashboard, pantalla de configuración de parámetros.
 
+**Nota de implementación:** el endpoint real es `GET /api/v1/categories` (inglés, consistente con el resto de la API implementada) y hoy solo devuelve `categoryId`, `name` y `parentCategoryId` — sin los parámetros de cobertura que describe este punto, que siguen viviendo solo en `categorias.csv`/`CategoryRepository` sin exponerse vía API. Ver `docs/InventoryIQ_Arquitectura.md` Sección 1.3.
+
 ## 8.10 `PATCH /api/v1/categorias/{categoriaId}/parametros`
 
 **Objetivo:** ajustar los parámetros de negocio configurables por categoría (umbral máximo de cobertura, días de cobertura extra, pesos del score de criticidad si se gestionan a este nivel).
@@ -984,15 +986,21 @@ Todos los endpoints se exponen bajo el prefijo `/api/v1`. El formato de intercam
 
 **Errores:** 404 si la categoría no existe; 400 si algún parámetro está fuera de rango válido (ej. umbral negativo).
 
+**Estado: PLANIFICADO.** No implementado — las categorías son de solo lectura (ver 8.9).
+
 ## 8.11 `GET /api/v1/proveedores` y `GET /api/v1/proveedores/{proveedorId}`
 
 **Objetivo:** listar proveedores y su detalle, incluyendo lead time histórico y productos asociados.
 
 **Casos de uso:** pantalla de proveedores, análisis de cumplimiento de lead time.
 
+**Estado: PLANIFICADO.** No implementado — no existe ni repositorio ni adaptador para proveedores; `Supplier` existe como modelo de dominio (Sección 5.3) pero no está conectado a ningún caso de uso. Además, en el proceso real relevado con el usuario, la coordinación con proveedores se hace por WhatsApp, sin ningún sistema — no hay de dónde importar este dato automáticamente.
+
 ## 8.12 `GET /api/v1/sucursales`
 
 **Objetivo:** listar sucursales disponibles, usado para poblar filtros en todo el dashboard.
+
+**Nota de implementación:** el endpoint real es `GET /api/v1/stores` (inglés). Devuelve solo las sucursales activas — de las 3 simuladas en `sucursales.csv`, 2 están activas hoy, reflejando que el despliegue real del usuario tiene 2 sucursales, no 3.
 
 ## 8.13 `POST /api/v1/ingesta/csv`
 
@@ -1015,6 +1023,34 @@ Todos los endpoints se exponen bajo el prefijo `/api/v1`. El formato de intercam
 **Response:** listado de alertas con producto, tipo, severidad, fecha de generación.
 
 **Casos de uso:** widget de alertas del dashboard.
+
+## 8.15 `GET /api/v1/products?q={término}` (no prevista en el diseño original)
+
+**Objetivo:** buscar en el catálogo activo por código (`sku` — un mismo campo de texto sirve tanto para un código de barras real como para un código interno corto, por ejemplo el de un producto de fiambrería vendido por peso) o por nombre, sin distinguir mayúsculas.
+
+**Origen:** no estaba prevista en esta sección; surgió de una necesidad real detectada durante el desarrollo — un selector de producto que no obligue a quien carga un dato a memorizar un `productId` numérico. La usa la pantalla de conteo de stock (ver 8.16).
+
+**Request (query params):** `q` (obligatorio, no puede ser vacío ni estar en blanco).
+
+**Response:** listado de productos coincidentes (`productId`, `sku`, `name`, `categoryId`).
+
+**Errores:** 400 si `q` está vacío o en blanco.
+
+## 8.16 `POST /api/v1/inventory-snapshots` (no prevista en el diseño original)
+
+**Objetivo:** registrar un conteo físico manual de stock como un nuevo snapshot de inventario, fechado hoy.
+
+**Origen:** el diseño original (Sección 7) asume que el inventario se actualiza vía un ETL automatizado desde el ERP/POS. En el proceso real relevado con el usuario, el export de stock del POS llega desactualizado — no se carga a tiempo cuando entra mercadería de un proveedor — así que el conteo físico manual, hecho antes de emitir un pedido, es la fuente confiable real. Este endpoint no reemplaza al ETL planificado (Sección 7); cubre la necesidad inmediata mientras ese proceso no exista.
+
+**Request (body):** `productId`, `storeId`, `stockActual` (entero, 0 o más).
+
+**Response:** el snapshot creado (`inventoryId`, `snapshotDate`, `productId`, `storeId`, `currentStock`, `stockInTransit`).
+
+**Casos de uso:** pantalla de Administración → "Conteo de stock": buscar el producto (8.15), cargar la cantidad contada, guardar, repetir para el siguiente producto de la misma recorrida por el depósito.
+
+**Errores:** 404 si el producto o la sucursal no existen; 400 si `stockActual` es negativo.
+
+**Limitación conocida:** `stockInTransit` siempre se persiste en `0` — un conteo físico no puede relevar "lo que está en camino" de un proveedor.
 
 ---
 
@@ -1340,6 +1376,8 @@ Como estrategia futura (v3.0 del roadmap), se contempla incorporar modelos de fo
 - Persistencia en PostgreSQL (para configuración, estados calculados e histórico de recomendaciones), aunque el dato transaccional de origen sea CSV.
 - Contenerización completa vía Docker Compose (backend, frontend, PostgreSQL).
 
+**Nota de implementación:** el dashboard implementado tiene 8 pantallas, no 5 — sumó Alertas, Recomendaciones y Clasificación ABC/XYZ, originalmente pensadas para v1.1/v1.2 (ver 12.2), porque los casos de uso de backend correspondientes ya estaban implementados y no tenían ninguna pantalla propia. Detalle de Producto además quedó acotado a la proyección de demanda (Sección 9.4), no a la ficha completa que describe 8.2 — ver `docs/InventoryIQ_Arquitectura.md`.
+
 ## 12.2 v1.1
 
 **Objetivo:** pulir la experiencia de uso diario y agregar configurabilidad.
@@ -1350,6 +1388,8 @@ Como estrategia futura (v3.0 del roadmap), se contempla incorporar modelos de fo
 - Pantalla de Categorías y Rotación (matriz ABC-XYZ como heatmap).
 - Registro de feedback de recomendaciones (aplicada/descartada) y su KPI asociado.
 - Mejoras de UX: filtros persistentes entre pantallas, búsqueda rápida.
+
+**Nota de implementación:** el registro de feedback de recomendaciones y una pantalla de Clasificación ABC/XYZ (sin heatmap todavía, tabla simple con badges) ya están implementados — se adelantaron al MVP en vez de esperar a v1.1, porque los casos de uso de backend ya existían sin ninguna pantalla propia. Las alertas también se muestran (pantalla propia), pero sin configurabilidad de umbrales todavía.
 
 ## 12.3 v1.2
 
