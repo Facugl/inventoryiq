@@ -13,8 +13,11 @@ import com.inventoryiq.application.port.in.ListRecommendationsUseCase;
 import com.inventoryiq.application.port.in.ListStoresUseCase;
 import com.inventoryiq.application.port.in.RecalculateProductStatusUseCase;
 import com.inventoryiq.application.port.in.RecalculateRecommendationsUseCase;
+import com.inventoryiq.application.port.in.RecordInventoryCountUseCase;
 import com.inventoryiq.application.port.in.RegisterRecommendationFeedbackUseCase;
+import com.inventoryiq.application.port.in.SearchProductsUseCase;
 import com.inventoryiq.application.port.out.CategoryRepository;
+import com.inventoryiq.application.port.out.InventoryIngestionRepository;
 import com.inventoryiq.application.port.out.InventoryRepository;
 import com.inventoryiq.application.port.out.ProductRepository;
 import com.inventoryiq.application.port.out.RecommendationRepository;
@@ -34,7 +37,9 @@ import com.inventoryiq.application.usecase.ListRecommendationsService;
 import com.inventoryiq.application.usecase.ListStoresService;
 import com.inventoryiq.application.usecase.RecalculateProductStatusService;
 import com.inventoryiq.application.usecase.RecalculateRecommendationsService;
+import com.inventoryiq.application.usecase.RecordInventoryCountService;
 import com.inventoryiq.application.usecase.RegisterRecommendationFeedbackService;
+import com.inventoryiq.application.usecase.SearchProductsService;
 import com.inventoryiq.domain.service.CriticalityEvaluator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -163,5 +168,18 @@ public class UseCaseConfig {
 	@Bean
 	public ListCategoriesUseCase listCategoriesUseCase(CategoryRepository categoryRepository) {
 		return new ListCategoriesService(categoryRepository);
+	}
+
+	@Bean
+	public SearchProductsUseCase searchProductsUseCase(ProductRepository productRepository) {
+		return new SearchProductsService(productRepository);
+	}
+
+	@Bean
+	public RecordInventoryCountUseCase recordInventoryCountUseCase(
+			ProductRepository productRepository,
+			StoreRepository storeRepository,
+			InventoryIngestionRepository inventoryIngestionRepository) {
+		return new RecordInventoryCountService(productRepository, storeRepository, inventoryIngestionRepository);
 	}
 }

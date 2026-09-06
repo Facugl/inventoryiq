@@ -6,6 +6,7 @@ import com.inventoryiq.adapters.out.csv.CsvProductRepositoryAdapter;
 import com.inventoryiq.adapters.out.csv.CsvSaleRepositoryAdapter;
 import com.inventoryiq.adapters.out.csv.CsvStoreRepositoryAdapter;
 import com.inventoryiq.application.port.out.CategoryRepository;
+import com.inventoryiq.application.port.out.InventoryIngestionRepository;
 import com.inventoryiq.application.port.out.InventoryRepository;
 import com.inventoryiq.application.port.out.ProductRepository;
 import com.inventoryiq.application.port.out.SaleIngestionRepository;
@@ -60,9 +61,24 @@ public class CsvAdaptersConfig {
 		return csvSaleRepositoryAdapter;
 	}
 
+	/**
+	 * CsvInventoryRepositoryAdapter implementa InventoryRepository (lectura)
+	 * e InventoryIngestionRepository (escritura, conteo manual) sobre el
+	 * mismo índice en memoria — mismo criterio que CsvSaleRepositoryAdapter.
+	 */
 	@Bean
-	public InventoryRepository inventoryRepository(CsvDataProperties csvDataProperties) {
+	public CsvInventoryRepositoryAdapter csvInventoryRepositoryAdapter(CsvDataProperties csvDataProperties) {
 		return new CsvInventoryRepositoryAdapter(Path.of(csvDataProperties.getBasePath()));
+	}
+
+	@Bean
+	public InventoryRepository inventoryRepository(CsvInventoryRepositoryAdapter csvInventoryRepositoryAdapter) {
+		return csvInventoryRepositoryAdapter;
+	}
+
+	@Bean
+	public InventoryIngestionRepository inventoryIngestionRepository(CsvInventoryRepositoryAdapter csvInventoryRepositoryAdapter) {
+		return csvInventoryRepositoryAdapter;
 	}
 
 	@Bean
