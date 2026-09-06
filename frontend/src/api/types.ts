@@ -181,3 +181,21 @@ export interface ProductClassification {
   abcClass: AbcClassification
   xyzClass: XyzClassification
 }
+
+/** Forma de ProductSummaryResponse (GET /api/v1/products?q=...). sku puede ser un código de barras real o un código interno corto. */
+export interface ProductSummary {
+  productId: number
+  sku: string
+  name: string
+  categoryId: number
+}
+
+/** Forma de InventorySnapshotResponse (POST /api/v1/inventory-snapshots). */
+export interface InventorySnapshot {
+  inventoryId: number
+  snapshotDate: string
+  productId: number
+  storeId: number
+  currentStock: number
+  stockInTransit: number
+}

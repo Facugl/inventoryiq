@@ -20,3 +20,37 @@
 .state table {
   margin-top: 8px;
 }
+
+.search-results {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.search-results li + li {
+  border-top: 1px solid var(--border);
+}
+
+.search-results button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border: none;
+  background: none;
+  color: var(--text-h);
+  font: inherit;
+  cursor: pointer;
+}
+
+.search-results button:hover {
+  background: var(--code-bg);
+}
+
+.selected-product {
+  color: var(--text-h);
+}

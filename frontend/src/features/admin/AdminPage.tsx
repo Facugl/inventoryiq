@@ -1,8 +1,17 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { ingestCsvFile, CsvIngestionThresholdError } from '../../api/csvIngestion'
 import { recalculateProductStatus } from '../../api/productStatus'
+import { recordInventoryCount } from '../../api/inventorySnapshots'
+import { searchProducts } from '../../api/products'
 import { ApiError } from '../../api/http'
-import type { IngestionSummary, RecalculateProductStatusResult, RowRejection, Store } from '../../api/types'
+import type {
+  IngestionSummary,
+  InventorySnapshot,
+  ProductSummary,
+  RecalculateProductStatusResult,
+  RowRejection,
+  Store,
+} from '../../api/types'
 import '../../shared/list-page.css'
 import './AdminPage.css'
 
@@ -32,6 +41,200 @@ function RejectionsTable({ rejections }: { rejections: RowRejection[] }) {
         </tbody>
       </table>
     </div>
+  )
+}
+
+function InventoryCountSection({ stores }: { stores: Store[] }) {
+  const [storeId, setStoreId] = useState(stores[0].id)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [results, setResults] = useState<ProductSummary[]>([])
+  const [searchError, setSearchError] = useState<string | null>(null)
+  const [selectedProduct, setSelectedProduct] = useState<ProductSummary | null>(null)
+  const [quantity, setQuantity] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [sessionLog, setSessionLog] = useState<{ product: ProductSummary; snapshot: InventorySnapshot }[]>([])
+
+  // Búsqueda con debounce. Todo setState ocurre dentro del callback del
+  // timer (asíncrono), nunca en el cuerpo síncrono del efecto, para no
+  // disparar el warning de set-state-in-effect.
+  useEffect(() => {
+    let cancelled = false
+
+    const timeoutId = setTimeout(() => {
+      const term = searchTerm.trim()
+      if (!term) {
+        if (!cancelled) {
+          setResults([])
+          setSearchError(null)
+        }
+        return
+      }
+
+      searchProducts(term)
+        .then((found) => {
+          if (!cancelled) {
+            setResults(found)
+            setSearchError(null)
+          }
+        })
+        .catch((err) => {
+          if (!cancelled) {
+            setResults([])
+            setSearchError(genericErrorMessage(err))
+          }
+        })
+    }, 300)
+
+    return () => {
+      cancelled = true
+      clearTimeout(timeoutId)
+    }
+  }, [searchTerm])
+
+  const selectProduct = (product: ProductSummary) => {
+    setSelectedProduct(product)
+    setSearchTerm('')
+    setResults([])
+    setQuantity('')
+    setSaveError(null)
+  }
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault()
+    if (!selectedProduct) return
+
+    const parsedQuantity = Number(quantity)
+    if (quantity === '' || !Number.isInteger(parsedQuantity) || parsedQuantity < 0) {
+      setSaveError('Ingresá una cantidad válida (0 o más).')
+      return
+    }
+
+    setSaving(true)
+    setSaveError(null)
+    recordInventoryCount({ productId: selectedProduct.productId, storeId, stockActual: parsedQuantity })
+      .then((snapshot) => {
+        setSessionLog((current) => [{ product: selectedProduct, snapshot }, ...current])
+        setSelectedProduct(null)
+        setQuantity('')
+      })
+      .catch((err) => setSaveError(genericErrorMessage(err)))
+      .finally(() => setSaving(false))
+  }
+
+  return (
+    <section>
+      <h2>Conteo de stock</h2>
+      <p>
+        Registrá el conteo físico de un producto antes de pedirle a un proveedor — buscá por código (de barras o
+        interno, por ejemplo "33" para un producto de fiambrería) o por nombre.
+      </p>
+
+      <div className="filters">
+        <label>
+          Sucursal
+          <select value={storeId} onChange={(event) => setStoreId(Number(event.target.value))}>
+            {stores.map((store) => (
+              <option key={store.id} value={store.id}>
+                {store.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {!selectedProduct && (
+          <label>
+            Buscar producto
+            <input
+              type="text"
+              placeholder="Código o nombre…"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+            />
+          </label>
+        )}
+      </div>
+
+      {searchError && (
+        <p className="state state-error" role="alert">
+          {searchError}
+        </p>
+      )}
+
+      {!selectedProduct && results.length > 0 && (
+        <ul className="search-results">
+          {results.map((product) => (
+            <li key={product.productId}>
+              <button type="button" onClick={() => selectProduct(product)}>
+                <strong>{product.sku}</strong> — {product.name}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {!selectedProduct && searchTerm.trim() !== '' && results.length === 0 && !searchError && (
+        <p className="state state-empty">Sin resultados para "{searchTerm}".</p>
+      )}
+
+      {selectedProduct && (
+        <form className="filters" onSubmit={handleSubmit}>
+          <div className="selected-product">
+            <strong>{selectedProduct.sku}</strong> — {selectedProduct.name}
+          </div>
+
+          <label>
+            Cantidad contada
+            <input
+              type="number"
+              min={0}
+              value={quantity}
+              onChange={(event) => setQuantity(event.target.value)}
+              autoFocus
+              required
+            />
+          </label>
+
+          <button type="submit" disabled={saving}>
+            {saving ? 'Guardando…' : 'Guardar'}
+          </button>
+          <button type="button" onClick={() => setSelectedProduct(null)}>
+            Cancelar
+          </button>
+        </form>
+      )}
+
+      {saveError && (
+        <p className="state state-error" role="alert">
+          {saveError}
+        </p>
+      )}
+
+      {sessionLog.length > 0 && (
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>Producto</th>
+                <th>Cantidad contada</th>
+                <th>Fecha</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sessionLog.map(({ product, snapshot }) => (
+                <tr key={snapshot.inventoryId}>
+                  <td>{product.sku}</td>
+                  <td>{product.name}</td>
+                  <td>{snapshot.currentStock}</td>
+                  <td>{snapshot.snapshotDate}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -215,6 +418,7 @@ export function AdminPage({ stores }: AdminPageProps) {
         <p>Carga de datos y disparo manual de procesos de recálculo.</p>
       </header>
 
+      <InventoryCountSection stores={stores} />
       <CsvIngestionSection />
       <RecalculateSection stores={stores} />
     </main>
