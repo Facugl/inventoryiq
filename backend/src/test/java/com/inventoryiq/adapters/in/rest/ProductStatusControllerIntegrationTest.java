@@ -101,12 +101,13 @@ class ProductStatusControllerIntegrationTest {
 
 	@Test
 	void recalculatesEveryActiveStoreWhenTheRequestBodyIsOmitted() throws Exception {
+		// Solo 2 sucursales activas ("Sucursal Sur" está desactivada, ver
+		// data/csv/sucursales.csv) — findAllActive() no la incluye.
 		mockMvc.perform(post("/api/v1/product-status/recalculate"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.storesProcessed").value(3))
+				.andExpect(jsonPath("$.storesProcessed").value(2))
 				.andExpect(jsonPath("$.perStore[0].storeId").value(1))
-				.andExpect(jsonPath("$.perStore[1].storeId").value(2))
-				.andExpect(jsonPath("$.perStore[2].storeId").value(3));
+				.andExpect(jsonPath("$.perStore[1].storeId").value(2));
 	}
 
 	@Test

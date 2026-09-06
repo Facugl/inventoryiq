@@ -17,7 +17,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * De punta a punta: HTTP -> StoresController -> ListStoresUseCase (wiring
  * real de config/) -> CsvStoreRepositoryAdapter real -> sucursales.csv real
- * (3 sucursales, todas activas — ver docs/README_datos_simulados.md).
+ * (3 sucursales cargadas, pero "Sucursal Sur" está marcada inactiva para
+ * reflejar el despliegue real de 2 sucursales del usuario — ver el commit
+ * que desactivó esa fila).
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -32,10 +34,11 @@ class StoresControllerIntegrationTest {
 	private MockMvc mockMvc;
 
 	@Test
-	void returnsTheThreeActiveStoresFromTheRealCsv() throws Exception {
+	void returnsOnlyTheTwoActiveStoresFromTheRealCsv() throws Exception {
 		mockMvc.perform(get("/api/v1/stores"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.length()").value(3))
-				.andExpect(jsonPath("$[?(@.storeId == 1)].name").value(org.hamcrest.Matchers.contains("Sucursal Centro")));
+				.andExpect(jsonPath("$.length()").value(2))
+				.andExpect(jsonPath("$[?(@.storeId == 1)].name").value(org.hamcrest.Matchers.contains("Sucursal Centro")))
+				.andExpect(jsonPath("$[?(@.storeId == 3)]").isEmpty());
 	}
 }
