@@ -6,6 +6,8 @@ import com.inventoryiq.application.port.in.AlertSeverity;
 import com.inventoryiq.application.port.in.AlertType;
 import com.inventoryiq.application.port.in.GenerateAlertsQuery;
 import com.inventoryiq.application.port.in.GenerateAlertsUseCase;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -27,6 +29,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/alerts")
 @Validated
+@Tag(name = "Alertas", description = "Alertas de quiebre de stock y sobrestock (composición de Productos Críticos y Sobrestock)")
 public class AlertsController {
 
 	private final GenerateAlertsUseCase generateAlertsUseCase;
@@ -36,6 +39,9 @@ public class AlertsController {
 	}
 
 	@GetMapping
+	@Operation(summary = "Listar alertas activas",
+			description = "Deriva alertas de STOCKOUT (productos críticos) y OVERSTOCK para una sucursal, "
+					+ "opcionalmente filtradas por tipo y severidad.")
 	public List<AlertResponse> getAlerts(
 			@RequestParam @NotNull @Positive Long storeId,
 			@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate referenceDate,

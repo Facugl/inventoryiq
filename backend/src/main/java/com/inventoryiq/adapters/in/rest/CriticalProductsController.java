@@ -4,6 +4,8 @@ import com.inventoryiq.adapters.in.rest.dto.CriticalProductResponse;
 import com.inventoryiq.adapters.in.rest.mapper.CriticalProductResponseMapper;
 import com.inventoryiq.application.port.in.GetCriticalProductsQuery;
 import com.inventoryiq.application.port.in.GetCriticalProductsUseCase;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -30,6 +32,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/products")
 @Validated
+@Tag(name = "Productos", description = "Consultas sobre el catálogo de productos: críticos, sobrestock, clasificación ABC/XYZ y búsqueda")
 public class CriticalProductsController {
 
 	private final GetCriticalProductsUseCase getCriticalProductsUseCase;
@@ -39,6 +42,8 @@ public class CriticalProductsController {
 	}
 
 	@GetMapping("/critical")
+	@Operation(summary = "Listar productos críticos",
+			description = "Productos en estado Crítico o Requiere Reposición en una sucursal, ordenados por score de criticidad.")
 	public List<CriticalProductResponse> getCriticalProducts(
 			@RequestParam @NotNull @Positive Long storeId,
 			@RequestParam(required = false) @Positive Long categoryId,

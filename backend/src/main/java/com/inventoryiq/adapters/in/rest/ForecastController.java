@@ -4,6 +4,8 @@ import com.inventoryiq.adapters.in.rest.dto.ForecastDemandResponse;
 import com.inventoryiq.adapters.in.rest.mapper.ForecastDemandResponseMapper;
 import com.inventoryiq.application.port.in.ForecastDemandQuery;
 import com.inventoryiq.application.port.in.ForecastDemandUseCase;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -30,6 +32,7 @@ import java.time.LocalDate;
 @RestController
 @RequestMapping("/api/v1/products")
 @Validated
+@Tag(name = "Forecast", description = "Proyección de demanda futura por producto")
 public class ForecastController {
 
 	private final ForecastDemandUseCase forecastDemandUseCase;
@@ -39,6 +42,9 @@ public class ForecastController {
 	}
 
 	@GetMapping("/{productId}/forecast")
+	@Operation(summary = "Proyectar demanda de un producto",
+			description = "Proyecta demanda diaria/total para un horizonte de días, con estacionalidad mensual. "
+					+ "baseAds es null y periods vacío si el producto no tiene historial de ventas suficiente.")
 	public ForecastDemandResponse getForecast(
 			@PathVariable @Positive Long productId,
 			@RequestParam @NotNull @Positive Long storeId,

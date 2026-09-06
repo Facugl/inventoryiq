@@ -6,6 +6,8 @@ import com.inventoryiq.adapters.in.rest.mapper.SupplierResponseMapper;
 import com.inventoryiq.application.port.in.ListSuppliersUseCase;
 import com.inventoryiq.application.port.in.UpdateSupplierLeadTimeCommand;
 import com.inventoryiq.application.port.in.UpdateSupplierLeadTimeUseCase;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -24,6 +26,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/v1/suppliers")
+@Tag(name = "Proveedores", description = "Sin ingesta automática: catálogo cargado y lead time corregido a mano, porque no hay ningún sistema del que importarlos")
 public class SuppliersController {
 
 	private final ListSuppliersUseCase listSuppliersUseCase;
@@ -36,6 +39,7 @@ public class SuppliersController {
 	}
 
 	@GetMapping
+	@Operation(summary = "Listar proveedores activos")
 	public List<SupplierResponse> getSuppliers() {
 		return listSuppliersUseCase.execute().stream()
 				.map(SupplierResponseMapper::toResponse)
@@ -43,6 +47,8 @@ public class SuppliersController {
 	}
 
 	@PatchMapping("/{supplierId}/lead-time")
+	@Operation(summary = "Corregir el lead time de un proveedor",
+			description = "Corrección manual: no hay ningún sistema real del que importar este dato (coordinación por WhatsApp).")
 	public SupplierResponse updateLeadTime(
 			@PathVariable Long supplierId, @RequestBody @Valid UpdateSupplierLeadTimeRequest request) {
 		UpdateSupplierLeadTimeCommand command = new UpdateSupplierLeadTimeCommand(supplierId, request.leadTimeDays());

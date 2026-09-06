@@ -24,6 +24,8 @@ La primera vez tarda unos minutos (build de backend y frontend). Cuando termine:
 - **Frontend:** http://localhost:5173
 - **Backend (health check):** http://localhost:8080/health
 - **Backend (API):** http://localhost:8080/api/v1/...
+- **Backend (documentación interactiva — Swagger UI):** http://localhost:8080/swagger-ui/index.html
+- **Backend (spec OpenAPI cruda, JSON):** http://localhost:8080/v3/api-docs
 
 Los tres servicios (`postgres`, `backend`, `frontend`) quedan corriendo en segundo
 plano. Para ver los logs: `docker compose logs -f backend` (o `frontend`, `postgres`).
@@ -56,15 +58,60 @@ Antes de exportar desde tu sistema, tené en cuenta:
   Si hoy no lo llevás registrado por producto, un valor genérico razonable
   (por ejemplo, el lead time típico de tu proveedor habitual) sirve como
   punto de partida.
-- **`proveedor_id`**: hoy es obligatorio en cada fila aunque no se use en
-  ningún cálculo todavía (no hay ninguna pantalla de proveedores implementada).
-  Si no manejás un ID de proveedor formal, cualquier número fijo (por ejemplo,
-  `1` para todos) sirve como placeholder.
+- **`proveedor_id`**: obligatorio en cada fila y tiene que apuntar a un
+  proveedor que exista en `proveedores.csv` (misma exigencia que `categoria_id`).
+  La pantalla de Proveedores permite listar los proveedores activos y corregir
+  a mano el lead time de cada uno, pero no crearlos — si tu catálogo de
+  proveedores no es el simulado, primero hay que cargar `data/csv/proveedores.csv`
+  a mano o vía script.
 
 Con más de 10.000 filas, cualquier valor faltante o mal tipado en estas columnas
 hace que el backend no arranque — conviene revisar el CSV exportado antes de
 reemplazarlo (por ejemplo, abriéndolo en una planilla y filtrando por celdas
 vacías en `categoria_id`, `proveedor_id` o `lead_time_dias`).
+
+## Verificación manual
+
+Checklist para confirmar que un `docker compose up -d --build` levantó todo
+correctamente, antes de probar las pantallas a mano:
+
+1. **Los tres contenedores están arriba y sanos:**
+   ```bash
+   docker compose ps
+   ```
+   Esperado: `postgres` (healthy), `backend` y `frontend` en estado `Up`. Si
+   alguno reinicia en loop, `docker compose logs -f <servicio>` muestra el error.
+
+2. **El backend responde:**
+   ```bash
+   curl http://localhost:8080/health
+   ```
+   Esperado: `OK`.
+
+3. **La API expone los endpoints esperados** — abrí
+   http://localhost:8080/swagger-ui/index.html y confirmá que aparecen las 13
+   secciones (Alertas, Categorías, Estado de productos, Forecast, Health,
+   Ingesta CSV, Inventario, KPIs, Productos, Proveedores, Recomendaciones,
+   Sucursales, Sugerencias de reposición). "Try it out" en `GET /api/v1/stores`
+   o `GET /api/v1/suppliers` sin parámetros debería devolver 200 con datos.
+
+4. **El frontend carga y llega al backend:** abrí http://localhost:5173 — si
+   el catálogo de sucursales/categorías no carga, la pantalla lo dice
+   explícitamente ("No se pudo cargar el catálogo..."), señal de que el
+   frontend no está llegando al backend (revisar `VITE_BACKEND_URL` en
+   `docker-compose.yml` y los logs de `frontend`).
+
+5. **Recorré las 9 pantallas** desde la barra de navegación — con los datos
+   simulados, todas deberían mostrar contenido (nunca una pantalla en blanco
+   sin mensaje de error ni de "sin datos").
+
+6. **Tests automatizados en verde** (no reemplazan la prueba manual, pero son
+   la forma más rápida de detectar una regresión antes de perder tiempo
+   navegando a mano):
+   ```bash
+   cd backend && ./mvnw test
+   cd frontend && npm run lint && npm run build
+   ```
 
 ## Desarrollo
 
@@ -80,3 +127,7 @@ vacías en `categoria_id`, `proveedor_id` o `lead_time_dias`).
 - `docs/InventoryIQ_Arquitectura.md` — arquitectura y flujos **implementados**, auditados contra el código.
 - `docs/InventoryIQ_Roadmap.md` — estado de avance por fase y próximos pasos.
 - `docs/README_datos_simulados.md` — cómo se generaron los CSV de prueba.
+- **Swagger UI** (con el backend corriendo) — http://localhost:8080/swagger-ui/index.html:
+  documentación interactiva de cada endpoint (parámetros, request/response, "Try it out"
+  contra el backend real), generada automáticamente por springdoc-openapi a partir del
+  código — nunca queda desactualizada respecto a los controllers.

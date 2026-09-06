@@ -86,7 +86,7 @@ avanzar a la siguiente.
 
 **Definition of Done:** Postman/curl contra cada endpoint devuelve JSON válido y consistente con lo que viste en la Fase 2-3.
 
-**Estado: COMPLETADA y ampliada.** 18 casos de uso expuestos vía REST (ver `docs/InventoryIQ_Arquitectura.md` Tabla 1.3), varios sin endpoint documentado en la Sección 8 original (búsqueda de productos, sucursales, categorías, conteo manual de inventario, clasificación ABC/XYZ, forecast, reorder suggestions, y ahora proveedores). Sin documentación OpenAPI/Swagger todavía — pendiente.
+**Estado: COMPLETADA y ampliada.** 18 casos de uso expuestos vía REST (ver `docs/InventoryIQ_Arquitectura.md` Tabla 1.3), varios sin endpoint documentado en la Sección 8 original (búsqueda de productos, sucursales, categorías, conteo manual de inventario, clasificación ABC/XYZ, forecast, reorder suggestions, y ahora proveedores). Documentación OpenAPI vía springdoc-openapi: Swagger UI interactiva en `/swagger-ui/index.html` y el JSON crudo en `/v3/api-docs`, con cada controller anotado (`@Tag`/`@Operation`) agrupado por área funcional.
 
 ---
 

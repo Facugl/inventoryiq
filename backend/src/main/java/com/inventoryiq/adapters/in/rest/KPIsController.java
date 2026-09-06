@@ -4,6 +4,8 @@ import com.inventoryiq.adapters.in.rest.dto.InventoryKPIsResponse;
 import com.inventoryiq.adapters.in.rest.mapper.InventoryKPIsResponseMapper;
 import com.inventoryiq.application.port.in.CalculateInventoryKPIsQuery;
 import com.inventoryiq.application.port.in.CalculateInventoryKPIsUseCase;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -24,6 +26,7 @@ import java.time.LocalDate;
 @RestController
 @RequestMapping("/api/v1/kpis")
 @Validated
+@Tag(name = "KPIs", description = "Indicadores agregados de inventario (pantalla de Inicio)")
 public class KPIsController {
 
 	private final CalculateInventoryKPIsUseCase calculateInventoryKPIsUseCase;
@@ -33,6 +36,10 @@ public class KPIsController {
 	}
 
 	@GetMapping
+	@Operation(summary = "Calcular KPIs de inventario",
+			description = "Tasa de quiebre, cobertura promedio, capital inmovilizado en sobrestock, tasa de "
+					+ "recomendaciones seguidas y rotación, para una sucursal y rango de fechas. Los campos "
+					+ "nullable son null cuando no hay datos suficientes en el período, no significan cero.")
 	public InventoryKPIsResponse getKPIs(
 			@RequestParam @NotNull @Positive Long storeId,
 			@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,

@@ -4,6 +4,8 @@ import com.inventoryiq.adapters.in.rest.dto.ProductClassificationResponse;
 import com.inventoryiq.adapters.in.rest.mapper.ProductClassificationResponseMapper;
 import com.inventoryiq.application.port.in.ClassifyProductsQuery;
 import com.inventoryiq.application.port.in.ClassifyProductsUseCase;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -27,6 +29,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/products")
 @Validated
+@Tag(name = "Productos")
 public class ProductClassificationController {
 
 	private final ClassifyProductsUseCase classifyProductsUseCase;
@@ -36,6 +39,8 @@ public class ProductClassificationController {
 	}
 
 	@GetMapping("/classification")
+	@Operation(summary = "Clasificar productos por ABC/XYZ",
+			description = "ABC por contribución al valor de venta, XYZ por variabilidad de la demanda, para una sucursal.")
 	public List<ProductClassificationResponse> getProductClassification(
 			@RequestParam @NotNull @Positive Long storeId,
 			@RequestParam(required = false) @Positive Long categoryId,

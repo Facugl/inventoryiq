@@ -5,6 +5,8 @@ import com.inventoryiq.adapters.in.rest.mapper.OverstockProductResponseMapper;
 import com.inventoryiq.application.port.in.DetectOverstockQuery;
 import com.inventoryiq.application.port.in.DetectOverstockUseCase;
 import com.inventoryiq.application.port.in.OverstockSortBy;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -33,6 +35,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/products")
 @Validated
+@Tag(name = "Productos")
 public class OverstockController {
 
 	private final DetectOverstockUseCase detectOverstockUseCase;
@@ -42,6 +45,9 @@ public class OverstockController {
 	}
 
 	@GetMapping("/overstock")
+	@Operation(summary = "Listar productos en sobrestock",
+			description = "Productos con cobertura de stock excesiva en una sucursal, con valor de inventario "
+					+ "inmovilizado, ordenables por valor inmovilizado o días de cobertura.")
 	public List<OverstockProductResponse> getOverstockProducts(
 			@RequestParam @NotNull @Positive Long storeId,
 			@RequestParam(required = false) @Positive Long categoryId,

@@ -5,6 +5,8 @@ import com.inventoryiq.adapters.in.rest.dto.RecalculateProductStatusResponse;
 import com.inventoryiq.adapters.in.rest.mapper.RecalculateProductStatusResponseMapper;
 import com.inventoryiq.application.port.in.RecalculateProductStatusCommand;
 import com.inventoryiq.application.port.in.RecalculateProductStatusUseCase;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -32,6 +34,7 @@ import java.time.LocalDate;
 @RestController
 @RequestMapping("/api/v1/product-status")
 @Validated
+@Tag(name = "Estado de productos", description = "Disparo manual del recálculo de estado de productos (mismo proceso que el job diario a las 02:00)")
 public class ProductStatusController {
 
 	private final RecalculateProductStatusUseCase recalculateProductStatusUseCase;
@@ -43,6 +46,10 @@ public class ProductStatusController {
 	}
 
 	@PostMapping("/recalculate")
+	@Operation(summary = "Recalcular estado de productos",
+			description = "Recalcula críticos, sobrestock, recomendaciones y alertas para una sucursal, o todas las "
+					+ "activas si se omite storeId en el body. No persiste un 'estado de producto' propio — el único "
+					+ "efecto persistido es la actualización de recomendaciones en PostgreSQL.")
 	public RecalculateProductStatusResponse recalculate(@RequestBody(required = false) @Valid RecalculateProductStatusRequest request) {
 		Long storeId = request != null ? request.storeId() : null;
 		LocalDate referenceDate = LocalDate.now(clock);

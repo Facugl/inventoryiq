@@ -6,6 +6,8 @@ import com.inventoryiq.adapters.in.rest.mapper.IngestionSummaryResponseMapper;
 import com.inventoryiq.application.port.in.CsvFileType;
 import com.inventoryiq.application.port.in.IngestCsvFileCommand;
 import com.inventoryiq.application.port.in.IngestCsvFileUseCase;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -33,6 +35,7 @@ import java.nio.charset.StandardCharsets;
 @RestController
 @RequestMapping("/api/v1/csv-ingestions")
 @Validated
+@Tag(name = "Ingesta CSV", description = "Carga de archivos CSV para su procesamiento")
 public class CsvIngestionController {
 
 	private final IngestCsvFileUseCase ingestCsvFileUseCase;
@@ -42,6 +45,9 @@ public class CsvIngestionController {
 	}
 
 	@PostMapping
+	@Operation(summary = "Ingerir un archivo CSV",
+			description = "Único fileType implementado: SALES. Todo-o-nada por lote: si el porcentaje de filas "
+					+ "rechazadas supera el umbral configurado, no se persiste ninguna fila (422).")
 	public IngestionSummaryResponse ingest(
 			@RequestParam CsvFileType fileType,
 			@RequestParam("file") MultipartFile file) throws IOException {

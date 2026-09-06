@@ -4,6 +4,8 @@ import com.inventoryiq.adapters.in.rest.dto.ReorderSuggestionResponse;
 import com.inventoryiq.adapters.in.rest.mapper.ReorderSuggestionResponseMapper;
 import com.inventoryiq.application.port.in.GenerateReorderSuggestionsQuery;
 import com.inventoryiq.application.port.in.GenerateReorderSuggestionsUseCase;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -29,6 +31,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/reorder-suggestions")
 @Validated
+@Tag(name = "Sugerencias de reposición", description = "Cálculo en memoria, sin persistir (ver Recomendaciones para la versión persistida)")
 public class ReorderSuggestionsController {
 
 	private final GenerateReorderSuggestionsUseCase generateReorderSuggestionsUseCase;
@@ -38,6 +41,9 @@ public class ReorderSuggestionsController {
 	}
 
 	@GetMapping
+	@Operation(summary = "Generar sugerencias de reposición",
+			description = "Para cada producto del alcance que dispara el punto de pedido: cantidad sugerida, fecha "
+					+ "límite de emisión y justificación. No persiste nada (a diferencia de POST /recommendations/recalculate).")
 	public List<ReorderSuggestionResponse> getReorderSuggestions(
 			@RequestParam @NotNull @Positive Long storeId,
 			@RequestParam(required = false) @Positive Long categoryId,

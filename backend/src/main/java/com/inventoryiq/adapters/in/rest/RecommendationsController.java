@@ -13,6 +13,8 @@ import com.inventoryiq.application.port.in.RecalculateRecommendationsUseCase;
 import com.inventoryiq.application.port.in.RegisterRecommendationFeedbackCommand;
 import com.inventoryiq.application.port.in.RegisterRecommendationFeedbackUseCase;
 import com.inventoryiq.domain.model.RecommendationStatus;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -48,6 +50,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/recommendations")
 @Validated
+@Tag(name = "Recomendaciones", description = "Recomendaciones de compra persistidas en Postgres, con feedback aplicada/descartada")
 public class RecommendationsController {
 
 	private final ListRecommendationsUseCase listRecommendationsUseCase;
@@ -67,6 +70,7 @@ public class RecommendationsController {
 	}
 
 	@GetMapping
+	@Operation(summary = "Listar recomendaciones", description = "Filtrable por sucursal (obligatorio), categoría, proveedor y estado (PENDING/APPLIED/DISCARDED).")
 	public List<RecommendationResponse> getRecommendations(
 			@RequestParam @NotNull @Positive Long storeId,
 			@RequestParam(required = false) @Positive Long categoryId,
@@ -81,6 +85,7 @@ public class RecommendationsController {
 	}
 
 	@PostMapping("/recalculate")
+	@Operation(summary = "Recalcular recomendaciones", description = "Genera sugerencias de reposición y las persiste como recomendaciones (nuevas, actualizadas o auto-descartadas).")
 	public RecalculateRecommendationsResponse recalculate(@RequestBody @Valid RecalculateRecommendationsRequest request) {
 		RecalculateRecommendationsCommand command = new RecalculateRecommendationsCommand(request.storeId(), LocalDate.now(clock));
 
@@ -91,6 +96,7 @@ public class RecommendationsController {
 	}
 
 	@PatchMapping("/{recommendationId}")
+	@Operation(summary = "Registrar feedback sobre una recomendación", description = "Transición válida solo desde PENDING hacia APPLIED o DISCARDED.")
 	public RecommendationResponse registerFeedback(
 			@PathVariable @Positive Long recommendationId,
 			@RequestBody @Valid RegisterRecommendationFeedbackRequest request) {
