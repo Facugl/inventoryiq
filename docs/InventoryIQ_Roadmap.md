@@ -149,18 +149,34 @@ Esta sección quedó desactualizada: describía la Fase 1 como punto de partida,
 las Fases 0 a 6 ya están completas (ver el estado marcado en cada una). El proyecto
 hoy está en una etapa distinta a la que este roadmap fue escrito para guiar —
 `data/csv/sucursales.csv` ya refleja el despliegue real del usuario (2 sucursales
-activas, no 3), y se agregaron dos capacidades no previstas originalmente: búsqueda
-de productos por código/nombre y registro de conteo manual de stock (Secciones 8.15
-y 8.16 de `InventoryIQ_Documentacion.md`), motivadas por cómo funciona el negocio
-real (compras coordinadas por WhatsApp sin ningún sistema, stock del POS que llega
-desactualizado).
+activas, no 3), y se agregaron capacidades no previstas originalmente: búsqueda
+de productos por código/nombre, registro de conteo manual de stock (Secciones 8.15
+y 8.16 de `InventoryIQ_Documentacion.md`) y corrección manual del lead time de
+proveedores (Sección 8.11), motivadas por cómo funciona el negocio real (compras
+coordinadas por WhatsApp sin ningún sistema, stock del POS que llega desactualizado,
+lead time que no existe en ningún sistema).
 
 Los próximos pasos concretos, en orden de valor para el uso real del sistema:
 
-1. **Cargar el catálogo real** (`productos.csv`, `categorias.csv`) del usuario en
-   lugar del simulado — es el bloqueante principal para que las recomendaciones dejen
-   de ser un ejercicio con datos ficticios.
-2. **README de arranque rápido** en la raíz del repo (pendiente de Fase 6).
+1. **Cargar el catálogo real** (`productos.csv`, `categorias.csv`, `proveedores.csv`)
+   del usuario en lugar del simulado — es el bloqueante principal para que las
+   recomendaciones dejen de ser un ejercicio con datos ficticios. **Decisión del
+   usuario:** esta conversión se hace con un pipeline ETL propio (no una carga
+   manual asistida), que transforma los exports reales del sistema XRP POS
+   (`data/real-export/`, sin trackear en git) al formato de `data/csv/*.csv` que ya
+   consumen los adaptadores CSV existentes — sin reemplazar esos adaptadores ni
+   tocar el dominio, a diferencia del ETL de la fila v2.0 de la tabla de abajo (ese
+   sí implica reemplazar CSV por Postgres/DW). Problemas de datos ya detectados en
+   los exports reales que ese pipeline va a tener que resolver: entidades HTML
+   (`&amp;`) que corrompen ~84-90 filas del export de precios al introducir un `;`
+   de más; `Costo c/IVA` como campo de costo; `Cód.Barra` (único) como `sku`/sku
+   interno, no `Cód.Int.` (tiene duplicados); mapeo de `Habilitación` a `activo`;
+   jerarquía de categorías de `categorias_xrp.csv`; y reconciliación de los ~130
+   nombres de proveedores del export de precios contra los 61 formalmente
+   registrados en `Mantenimiento_de_Proveedores_` (la pantalla de Proveedores,
+   Sección 8.11, ya permite cargar el lead time de cada uno a mano una vez que el
+   ETL los vuelque a `proveedores.csv`).
+2. **README de arranque rápido** en la raíz del repo — **completado** (ver Fase 6).
 3. Recién después, evaluar si conviene avanzar hacia v1.1/v1.2 (alertas configurables,
-   multi-sucursal) o directamente hacia v2.0 (ETL real), según qué tan bien funcione
-   el MVP con datos reales.
+   multi-sucursal) o directamente hacia v2.0 (ETL real + Data Warehouse), según qué
+   tan bien funcione el MVP con datos reales.
