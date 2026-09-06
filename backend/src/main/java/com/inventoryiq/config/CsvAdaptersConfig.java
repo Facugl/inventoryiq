@@ -5,6 +5,7 @@ import com.inventoryiq.adapters.out.csv.CsvInventoryRepositoryAdapter;
 import com.inventoryiq.adapters.out.csv.CsvProductRepositoryAdapter;
 import com.inventoryiq.adapters.out.csv.CsvSaleRepositoryAdapter;
 import com.inventoryiq.adapters.out.csv.CsvStoreRepositoryAdapter;
+import com.inventoryiq.adapters.out.csv.CsvSupplierRepositoryAdapter;
 import com.inventoryiq.application.port.out.CategoryRepository;
 import com.inventoryiq.application.port.out.InventoryIngestionRepository;
 import com.inventoryiq.application.port.out.InventoryRepository;
@@ -12,6 +13,7 @@ import com.inventoryiq.application.port.out.ProductRepository;
 import com.inventoryiq.application.port.out.SaleIngestionRepository;
 import com.inventoryiq.application.port.out.SaleRepository;
 import com.inventoryiq.application.port.out.StoreRepository;
+import com.inventoryiq.application.port.out.SupplierRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -84,5 +86,10 @@ public class CsvAdaptersConfig {
 	@Bean
 	public StoreRepository storeRepository(CsvDataProperties csvDataProperties) {
 		return new CsvStoreRepositoryAdapter(Path.of(csvDataProperties.getBasePath()));
+	}
+
+	@Bean
+	public SupplierRepository supplierRepository(CsvDataProperties csvDataProperties) {
+		return new CsvSupplierRepositoryAdapter(Path.of(csvDataProperties.getBasePath()));
 	}
 }

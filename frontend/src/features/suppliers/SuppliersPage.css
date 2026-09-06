@@ -1,0 +1,30 @@
+.lead-time-input {
+  width: 72px;
+  font: inherit;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.supplier-actions {
+  display: flex;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.supplier-actions button {
+  font: inherit;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+}
+
+.supplier-actions button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

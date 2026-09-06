@@ -55,6 +55,7 @@ Todo componente listado en las tablas siguientes es **IMPLEMENTADO**, verificado
 | `CategoriesController` | `GET /api/v1/categories` | `ListCategoriesUseCase` |
 | `ProductSearchController` | `GET /api/v1/products?q=...` | `SearchProductsUseCase` |
 | `InventorySnapshotsController` | `POST /api/v1/inventory-snapshots` | `RecordInventoryCountUseCase` |
+| `SuppliersController` | `GET /api/v1/suppliers`, `PATCH /api/v1/suppliers/{id}/lead-time` | `ListSuppliersUseCase`, `UpdateSupplierLeadTimeUseCase` |
 | `ProductStatusScheduledJob` | cron (`inventoryiq.scheduling.recalculate-product-status-cron`, default `0 0 2 * * *`) | `RecalculateProductStatusUseCase` |
 
 `GlobalExceptionHandler` (`@RestControllerAdvice`) traduce las excepciones de dominio lanzadas por cualquiera de estos flujos a códigos HTTP (400/404/422), de forma transversal.
@@ -79,6 +80,8 @@ Todo componente listado en las tablas siguientes es **IMPLEMENTADO**, verificado
 | `ListCategoriesUseCase` | Category | — | — |
 | `SearchProductsUseCase` | Product | — | — |
 | `RecordInventoryCountUseCase` | Product, Store, InventoryIngestion | — | — |
+| `ListSuppliersUseCase` | Supplier | — | — |
+| `UpdateSupplierLeadTimeUseCase` | Supplier | — | — |
 
 `ProductIndicatorsCalculator` es un helper compartido (`usecase/shared`), no un Output Port ni un servicio de dominio propio; internamente usa `AdsCalculator`, `DailySalesRecordAssembler`, `OverstockDetector`, `ProductStatusEvaluator`, `ReorderPointCalculator` y `SafetyStockCalculator`.
 
@@ -91,6 +94,7 @@ Todo componente listado en las tablas siguientes es **IMPLEMENTADO**, verificado
 | `SaleRepository` / `SaleIngestionRepository` | `CsvSaleRepositoryAdapter` (implementa ambos) | `ventas.csv` |
 | `InventoryRepository` / `InventoryIngestionRepository` | `CsvInventoryRepositoryAdapter` (implementa ambos) | `inventario.csv` |
 | `StoreRepository` | `CsvStoreRepositoryAdapter` | `sucursales.csv` |
+| `SupplierRepository` | `CsvSupplierRepositoryAdapter` | `proveedores.csv` |
 | `RecommendationRepository` | `PostgresRecommendationRepositoryAdapter` (JdbcTemplate) | tabla `recommendations` (Flyway `V1__create_recommendations_table.sql`) |
 
 ---
@@ -331,3 +335,50 @@ flowchart TD
 - `stockInTransit` siempre se registra en `0`: un conteo físico releva lo que hay parado en el depósito/góndola, no "lo que está en camino" de un proveedor — `RecordInventoryCountCommand` ni siquiera recibe ese dato como parámetro.
 - Mismo criterio de integridad referencial que `IngestCsvFileService` usa para ventas (verificar que `producto_id`/`sucursal_id` existan), pero acá cada chequeo fallido corta la ejecución con un 404 en vez de acumularse como un rechazo de fila — es un registro puntual, no un lote.
 - `GET /api/v1/products?q=...` (`SearchProductsUseCase`) no tiene un flujo dedicado en este documento: es un filtro en memoria de una sola pasada sobre `ProductRepository.findAllActive()` (por código en `Product.sku` o por nombre, sin distinguir mayúsculas), sin ramas ni casos de descarte que justifiquen un diagrama propio. Lo usa la pantalla de conteo de stock del frontend para resolver un producto por código de barras, código interno corto, o nombre, sin que quien carga el dato tenga que conocer el `productId` numérico.
+
+---
+
+## 6. Flujo: Corrección de lead time de un proveedor
+
+Flujo del caso de uso `UpdateSupplierLeadTimeUseCase` (impl: `UpdateSupplierLeadTimeService`). Sin endpoint documentado en el diseño original de la Sección 8 (ver 8.11 en `InventoryIQ_Documentacion.md`) — el diseño original asumía un `GET /api/v1/proveedores` de solo lectura, con lead time histórico importado de algún sistema. En el proceso real relevado con el usuario, la coordinación con proveedores es por WhatsApp y `Mantenimiento_de_Proveedores_.csv` (export real del sistema XRP) confirma que no existe ningún campo de lead time en ningún sistema — por eso el lead time se carga y corrige a mano, mismo criterio que el conteo físico de stock (Sección 5).
+
+```mermaid
+flowchart TD
+    CLI["Cliente / API REST"]
+    CTRL["SuppliersController<br/>PATCH /api/v1/suppliers/{id}/lead-time<br/>(leadTimeDays)"]
+    CMD["UpdateSupplierLeadTimeCommand"]
+    UC["UpdateSupplierLeadTimeUseCase"]
+    CHECK{"¿proveedor existe?"}
+    NOTFOUND["404 Not Found<br/>(SupplierNotFoundException)"]
+    UPDATE["SupplierRepository.updateLeadTime(...)"]
+    RESULT["SupplierResult"]
+    RESP["JSON, 200 OK"]
+
+    CSVA["CsvSupplierRepositoryAdapter<br/>reescribe el archivo completo"]
+    CSVFILE[("proveedores.csv")]
+
+    CLI --> CTRL --> CMD --> UC --> CHECK
+    CHECK -->|"no"| NOTFOUND
+    CHECK -->|"sí"| UPDATE --> RESULT --> RESP --> CLI
+
+    UPDATE -.->|"responde vía"| CSVA
+    CSVA --> CSVFILE
+
+    classDef entrada fill:#dbeafe,stroke:#2563eb,color:#1e3a8a;
+    classDef aplicacion fill:#fef9c3,stroke:#ca8a04,color:#713f12;
+    classDef dominio fill:#dcfce7,stroke:#16a34a,color:#14532d;
+    classDef salida fill:#fce7f3,stroke:#db2777,color:#831843;
+    classDef infra fill:#f1f5f9,stroke:#64748b,color:#0f172a;
+
+    class CLI,CTRL,NOTFOUND,RESP entrada;
+    class CMD,UC,CHECK,RESULT aplicacion;
+    class UPDATE dominio;
+    class CSVA salida;
+    class CSVFILE infra;
+```
+
+### 6.1 Notas sobre el detalle omitido
+
+- A diferencia de `CsvInventoryRepositoryAdapter`/`CsvSaleRepositoryAdapter` (que solo agregan filas al final del archivo, sobre registros históricos inmutables), `CsvSupplierRepositoryAdapter.updateLeadTime()` reescribe `proveedores.csv` completo: un proveedor es una entidad mutable que se corrige, no un evento que se acumula. El orden original de las filas se preserva (`LinkedHashMap`) para que corregir un proveedor no reordene el archivo.
+- `SupplierRepository` es un único puerto de salida con lectura y escritura (`findById`, `findAllActive`, `updateLeadTime`) — no está separado en un puerto de ingestión aparte como `SaleIngestionRepository`/`InventoryIngestionRepository`, porque acá no hay "ingesta" de datos nuevos, solo corrección de un dato existente. Mismo criterio que `RecommendationRepository.save()` (upsert sobre Postgres).
+- `GET /api/v1/suppliers` (`ListSuppliersUseCase`) no tiene un diagrama propio: es una traducción directa de `SupplierRepository.findAllActive()`, sin ramas — mismo criterio que `ListStoresUseCase`/`ListCategoriesUseCase`.

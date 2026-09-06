@@ -1,0 +1,3 @@
+proveedor_id,razon_social,lead_time_promedio_dias,condicion_pago,activo
+1,Lácteos del Sur S.A.,3,30 días,True
+2,Proveedor Descontinuado,4,Contado,False

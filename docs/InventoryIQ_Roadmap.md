@@ -56,7 +56,7 @@ avanzar a la siguiente.
 
 **Definition of Done:** con los 8 CSV cargados, podés ejecutar `GenerarRecomendacionesDeCompraUseCase` desde un test de integración y obtener una lista de recomendaciones coherente (podés cruzarla a mano contra 2-3 productos que ya viste en el análisis exploratorio de los CSV).
 
-**Estado: COMPLETADA para 5 de los 6 puertos.** `ProductRepository`, `SaleRepository` (+ `SaleIngestionRepository`), `InventoryRepository` (+ `InventoryIngestionRepository`, agregado después para conteos manuales), `CategoryRepository` y `StoreRepository` existen con sus adaptadores CSV. `ProveedorRepository` y `CompraRepository` **no existen** — no hay caso de uso implementado que los necesite (ver Sección 8.11 de `InventoryIQ_Documentacion.md`), y en el proceso real del usuario las compras se coordinan por WhatsApp, sin ningún sistema del que importarlas.
+**Estado: COMPLETADA para 5 de los 6 puertos, más un sexto agregado después de la Fase 0.** `ProductRepository`, `SaleRepository` (+ `SaleIngestionRepository`), `InventoryRepository` (+ `InventoryIngestionRepository`, agregado después para conteos manuales), `CategoryRepository` y `StoreRepository` existen con sus adaptadores CSV. `SupplierRepository` (`ProveedorRepository`) también existe ahora, con lectura y corrección manual de lead time (ver Sección 8.11 de `InventoryIQ_Documentacion.md` y Sección 6 de `InventoryIQ_Arquitectura.md`) — a diferencia de los demás, no es solo lectura: `CsvSupplierRepositoryAdapter` también escribe. `CompraRepository` **no existe** — no hay caso de uso implementado que lo necesite, y en el proceso real del usuario las compras se coordinan por WhatsApp, sin ningún sistema del que importarlas.
 
 ---
 
@@ -86,7 +86,7 @@ avanzar a la siguiente.
 
 **Definition of Done:** Postman/curl contra cada endpoint devuelve JSON válido y consistente con lo que viste en la Fase 2-3.
 
-**Estado: COMPLETADA y ampliada.** 14 casos de uso expuestos vía REST (ver `docs/InventoryIQ_Arquitectura.md` Tabla 1.3), varios sin endpoint documentado en la Sección 8 original (búsqueda de productos, sucursales, categorías, conteo manual de inventario, clasificación ABC/XYZ, forecast, reorder suggestions). Sin documentación OpenAPI/Swagger todavía — pendiente.
+**Estado: COMPLETADA y ampliada.** 18 casos de uso expuestos vía REST (ver `docs/InventoryIQ_Arquitectura.md` Tabla 1.3), varios sin endpoint documentado en la Sección 8 original (búsqueda de productos, sucursales, categorías, conteo manual de inventario, clasificación ABC/XYZ, forecast, reorder suggestions, y ahora proveedores). Sin documentación OpenAPI/Swagger todavía — pendiente.
 
 ---
 
@@ -103,7 +103,7 @@ avanzar a la siguiente.
 
 **Definition of Done:** un responsable de compras ficticio puede abrir el dashboard y, sin explicación adicional, entender qué comprar hoy y por qué.
 
-**Estado: COMPLETADA y ampliada a 8 pantallas.** Además de las 5 originales, se sumaron Alertas, Recomendaciones (con feedback aplicada/descartada) y Clasificación ABC/XYZ — adelantadas de v1.1 porque el backend ya las soportaba. Detalle de Producto quedó acotado a la proyección de demanda, no a la ficha completa con histórico que describe la Sección 8.2. Administración también ganó una sección de "Conteo de stock" no prevista originalmente (ver Sección 8.16 de `InventoryIQ_Documentacion.md`).
+**Estado: COMPLETADA y ampliada a 9 pantallas.** Además de las 5 originales, se sumaron Alertas, Recomendaciones (con feedback aplicada/descartada), Clasificación ABC/XYZ y Proveedores — adelantadas de v1.1/10.6 porque el backend ya las soportaba (o, en el caso de Proveedores, un recorte acotado a lo que hay dato real para soportar: ver Sección 8.11 de `InventoryIQ_Documentacion.md`). Detalle de Producto quedó acotado a la proyección de demanda, no a la ficha completa con histórico que describe la Sección 8.2. Administración también ganó una sección de "Conteo de stock" no prevista originalmente (ver Sección 8.16 de `InventoryIQ_Documentacion.md`).
 
 ---
 
@@ -118,7 +118,7 @@ avanzar a la siguiente.
 
 **Definition of Done:** en una máquina limpia, `docker compose up` + un comando de seed dejan el sistema navegable end-to-end con los datos simulados.
 
-**Estado: COMPLETADA parcialmente.** `docker compose up` levanta backend + frontend + Postgres y el sistema es navegable de punta a punta con los CSV simulados (que ya vienen en el repo, en `data/csv/` — no hace falta un script de seed aparte porque no hay nada que sembrar en una base vacía). Sin un `README.md` de arranque rápido en la raíz del repo todavía.
+**Estado: COMPLETADA.** `docker compose up` levanta backend + frontend + Postgres y el sistema es navegable de punta a punta con los CSV simulados (que ya vienen en el repo, en `data/csv/` — no hace falta un script de seed aparte porque no hay nada que sembrar en una base vacía). `README.md` de arranque rápido en la raíz del repo, con `.env.example`.
 
 ---
 

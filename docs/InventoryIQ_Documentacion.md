@@ -988,13 +988,23 @@ Todos los endpoints se exponen bajo el prefijo `/api/v1`. El formato de intercam
 
 **Estado: PLANIFICADO.** No implementado — las categorías son de solo lectura (ver 8.9).
 
-## 8.11 `GET /api/v1/proveedores` y `GET /api/v1/proveedores/{proveedorId}`
+## 8.11 `GET /api/v1/suppliers` y `PATCH /api/v1/suppliers/{supplierId}/lead-time`
 
-**Objetivo:** listar proveedores y su detalle, incluyendo lead time histórico y productos asociados.
+**Objetivo:** listar proveedores activos y corregir a mano el lead time promedio de uno de ellos.
 
-**Casos de uso:** pantalla de proveedores, análisis de cumplimiento de lead time.
+**Nota de implementación:** difiere del diseño original (que proponía `GET /api/v1/proveedores` de solo lectura, con lead time histórico y productos asociados). En el proceso real relevado con el usuario, la coordinación con proveedores se hace por WhatsApp, sin ningún sistema — no hay de dónde importar el catálogo de proveedores ni su lead time automáticamente, y tampoco existe un historial que listar. `Mantenimiento_de_Proveedores_.csv` (export real del sistema XRP) confirma esto: trae datos fiscales/administrativos pero ningún campo de lead time. Por eso el endpoint de solo lectura planificado se reemplazó por un par lectura+corrección manual — mismo criterio que el conteo físico de stock (Sección 8.16): cuando el dato no existe en ningún sistema, se carga y corrige a mano en vez de simular una ingesta automática inexistente.
 
-**Estado: PLANIFICADO.** No implementado — no existe ni repositorio ni adaptador para proveedores; `Supplier` existe como modelo de dominio (Sección 5.3) pero no está conectado a ningún caso de uso. Además, en el proceso real relevado con el usuario, la coordinación con proveedores se hace por WhatsApp, sin ningún sistema — no hay de dónde importar este dato automáticamente.
+**`GET /api/v1/suppliers` — Response:** listado de proveedores activos (`supplierId`, `businessName`, `leadTimeDays`, `paymentTerms`).
+
+**`PATCH /api/v1/suppliers/{supplierId}/lead-time` — Request (body):** `leadTimeDays` (entero, mayor a 0).
+
+**`PATCH /api/v1/suppliers/{supplierId}/lead-time` — Response:** el proveedor actualizado, misma forma que un elemento del listado.
+
+**Casos de uso:** pantalla de Proveedores (Sección 10.6) — corregir el lead time de un proveedor antes de calcular recomendaciones de compra que dependan de él.
+
+**Errores:** 404 si el proveedor no existe; 400 si `leadTimeDays` no es mayor a 0.
+
+**Estado: IMPLEMENTADO.** `SupplierRepository` (lectura + actualización, sobre `proveedores.csv`), `ListSuppliersUseCase`/`UpdateSupplierLeadTimeUseCase`, `SuppliersController`. A diferencia de `SaleRepository`/`InventoryRepository` (registros históricos inmutables con un puerto de ingestión separado), un proveedor es una entidad mutable — el adaptador CSV reescribe el archivo completo al corregir un lead time, igual que `RecommendationRepository.save()` hace un upsert sobre Postgres.
 
 ## 8.12 `GET /api/v1/sucursales`
 
@@ -1219,6 +1229,8 @@ Cada caso de uso se implementa como un servicio de aplicación en el núcleo de 
 **Tabla principal:** proveedor, lead time prometido/histórico promedio, cantidad de productos asociados, órdenes pendientes.
 
 **Gráficos:** comparación de lead time prometido vs. lead time real (por proveedor), para detectar proveedores sistemáticamente incumplidores.
+
+**Nota de implementación:** lo implementado hoy (ver 8.11) es un recorte de esta visión — listado de proveedores activos con edición manual del lead time promedio, sin lead time histórico, órdenes pendientes ni comparación prometido/real (no hay de dónde obtener esos datos, ver 8.11).
 
 ## 10.7 Pantalla: Comparativa entre Sucursales (post-MVP, contemplada en el diseño)
 

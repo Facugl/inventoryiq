@@ -199,3 +199,15 @@ export interface InventorySnapshot {
   currentStock: number
   stockInTransit: number
 }
+
+/**
+ * Forma de SupplierResponse (GET /api/v1/suppliers, PATCH .../lead-time).
+ * Sin ingesta automática (Sección 8.11): el lead time se corrige a mano
+ * porque no hay ningún sistema del que importarlo.
+ */
+export interface Supplier {
+  supplierId: number
+  businessName: string
+  leadTimeDays: number
+  paymentTerms: string
+}

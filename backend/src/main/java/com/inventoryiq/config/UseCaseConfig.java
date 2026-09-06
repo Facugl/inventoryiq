@@ -11,11 +11,13 @@ import com.inventoryiq.application.port.in.IngestCsvFileUseCase;
 import com.inventoryiq.application.port.in.ListCategoriesUseCase;
 import com.inventoryiq.application.port.in.ListRecommendationsUseCase;
 import com.inventoryiq.application.port.in.ListStoresUseCase;
+import com.inventoryiq.application.port.in.ListSuppliersUseCase;
 import com.inventoryiq.application.port.in.RecalculateProductStatusUseCase;
 import com.inventoryiq.application.port.in.RecalculateRecommendationsUseCase;
 import com.inventoryiq.application.port.in.RecordInventoryCountUseCase;
 import com.inventoryiq.application.port.in.RegisterRecommendationFeedbackUseCase;
 import com.inventoryiq.application.port.in.SearchProductsUseCase;
+import com.inventoryiq.application.port.in.UpdateSupplierLeadTimeUseCase;
 import com.inventoryiq.application.port.out.CategoryRepository;
 import com.inventoryiq.application.port.out.InventoryIngestionRepository;
 import com.inventoryiq.application.port.out.InventoryRepository;
@@ -24,6 +26,7 @@ import com.inventoryiq.application.port.out.RecommendationRepository;
 import com.inventoryiq.application.port.out.SaleIngestionRepository;
 import com.inventoryiq.application.port.out.SaleRepository;
 import com.inventoryiq.application.port.out.StoreRepository;
+import com.inventoryiq.application.port.out.SupplierRepository;
 import com.inventoryiq.application.usecase.CalculateInventoryKPIsService;
 import com.inventoryiq.application.usecase.ClassifyProductsService;
 import com.inventoryiq.application.usecase.DetectOverstockService;
@@ -35,11 +38,13 @@ import com.inventoryiq.application.usecase.IngestCsvFileService;
 import com.inventoryiq.application.usecase.ListCategoriesService;
 import com.inventoryiq.application.usecase.ListRecommendationsService;
 import com.inventoryiq.application.usecase.ListStoresService;
+import com.inventoryiq.application.usecase.ListSuppliersService;
 import com.inventoryiq.application.usecase.RecalculateProductStatusService;
 import com.inventoryiq.application.usecase.RecalculateRecommendationsService;
 import com.inventoryiq.application.usecase.RecordInventoryCountService;
 import com.inventoryiq.application.usecase.RegisterRecommendationFeedbackService;
 import com.inventoryiq.application.usecase.SearchProductsService;
+import com.inventoryiq.application.usecase.UpdateSupplierLeadTimeService;
 import com.inventoryiq.domain.service.CriticalityEvaluator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -181,5 +186,15 @@ public class UseCaseConfig {
 			StoreRepository storeRepository,
 			InventoryIngestionRepository inventoryIngestionRepository) {
 		return new RecordInventoryCountService(productRepository, storeRepository, inventoryIngestionRepository);
+	}
+
+	@Bean
+	public ListSuppliersUseCase listSuppliersUseCase(SupplierRepository supplierRepository) {
+		return new ListSuppliersService(supplierRepository);
+	}
+
+	@Bean
+	public UpdateSupplierLeadTimeUseCase updateSupplierLeadTimeUseCase(SupplierRepository supplierRepository) {
+		return new UpdateSupplierLeadTimeService(supplierRepository);
 	}
 }

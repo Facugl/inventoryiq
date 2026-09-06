@@ -10,6 +10,7 @@ import { ProductDetailPage, type ProductSelection } from './features/product-det
 import { RecommendationsPage } from './features/recommendations/RecommendationsPage'
 import { AlertsPage } from './features/alerts/AlertsPage'
 import { ClassificationPage } from './features/classification/ClassificationPage'
+import { SuppliersPage } from './features/suppliers/SuppliersPage'
 import { AdminPage } from './features/admin/AdminPage'
 import './App.css'
 
@@ -21,6 +22,7 @@ type ScreenKey =
   | 'recommendations'
   | 'detail'
   | 'classification'
+  | 'suppliers'
   | 'admin'
 
 const NAV_ITEMS: { key: ScreenKey; label: string }[] = [
@@ -31,6 +33,7 @@ const NAV_ITEMS: { key: ScreenKey; label: string }[] = [
   { key: 'recommendations', label: 'Recomendaciones' },
   { key: 'detail', label: 'Detalle de producto' },
   { key: 'classification', label: 'Clasificación ABC/XYZ' },
+  { key: 'suppliers', label: 'Proveedores' },
   { key: 'admin', label: 'Administración' },
 ]
 
@@ -113,6 +116,7 @@ function App() {
       {screen === 'recommendations' && <RecommendationsPage stores={stores} />}
       {screen === 'detail' && <ProductDetailPage stores={stores} initialSelection={selection} />}
       {screen === 'classification' && <ClassificationPage stores={stores} categories={categories} />}
+      {screen === 'suppliers' && <SuppliersPage />}
       {screen === 'admin' && <AdminPage stores={stores} />}
     </>
   )
