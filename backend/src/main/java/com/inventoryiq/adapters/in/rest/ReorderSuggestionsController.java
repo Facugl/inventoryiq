@@ -53,7 +53,7 @@ public class ReorderSuggestionsController {
 		GenerateReorderSuggestionsQuery query = new GenerateReorderSuggestionsQuery(storeId, categoryId, supplierId, referenceDate);
 
 		return generateReorderSuggestionsUseCase.execute(query).stream()
-				.map(ReorderSuggestionResponseMapper::toResponse)
+				.map(ReorderSuggestionResponseMapper.INSTANCE::toResponse)
 				.toList();
 	}
 }

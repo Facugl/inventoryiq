@@ -1,14 +1,16 @@
 package com.inventoryiq.adapters.in.rest.mapper;
 
+import org.mapstruct.Mapper;
+import org.mapstruct.ReportingPolicy;
+import org.mapstruct.factory.Mappers;
+
 import com.inventoryiq.adapters.in.rest.dto.SupplierResponse;
 import com.inventoryiq.application.port.in.SupplierResult;
 
 /** Traduce la salida del caso de uso (application) al DTO público de la API REST. */
-public final class SupplierResponseMapper {
-	private SupplierResponseMapper() {
-	}
+@Mapper(unmappedTargetPolicy = ReportingPolicy.ERROR)
+public interface SupplierResponseMapper {
+	SupplierResponseMapper INSTANCE = Mappers.getMapper(SupplierResponseMapper.class);
 
-	public static SupplierResponse toResponse(SupplierResult result) {
-		return new SupplierResponse(result.supplierId(), result.businessName(), result.leadTimeDays(), result.paymentTerms());
-	}
+	SupplierResponse toResponse(SupplierResult result);
 }

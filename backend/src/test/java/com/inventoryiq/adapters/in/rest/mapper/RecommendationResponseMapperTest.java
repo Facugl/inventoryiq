@@ -18,7 +18,7 @@ class RecommendationResponseMapperTest {
 				LocalDate.parse("2026-08-05"), "justificación de prueba", RecommendationStatus.APPLIED,
 				LocalDate.parse("2026-08-01"), "comprado", LocalDate.parse("2026-08-03"));
 
-		RecommendationResponse response = RecommendationResponseMapper.toResponse(result);
+		RecommendationResponse response = RecommendationResponseMapper.INSTANCE.toResponse(result);
 
 		assertEquals(1L, response.recommendationId());
 		assertEquals(1001L, response.productId());

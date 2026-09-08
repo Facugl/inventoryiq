@@ -57,7 +57,7 @@ public class OverstockController {
 		DetectOverstockQuery query = DetectOverstockQuery.of(storeId, categoryId, referenceDate, sortBy);
 
 		return detectOverstockUseCase.execute(query).stream()
-				.map(OverstockProductResponseMapper::toResponse)
+				.map(OverstockProductResponseMapper.INSTANCE::toResponse)
 				.toList();
 	}
 }

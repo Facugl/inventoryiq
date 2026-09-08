@@ -47,6 +47,6 @@ public class KPIsController {
 
 		CalculateInventoryKPIsQuery query = new CalculateInventoryKPIsQuery(storeId, fromDate, toDate);
 
-		return InventoryKPIsResponseMapper.toResponse(calculateInventoryKPIsUseCase.execute(query));
+		return InventoryKPIsResponseMapper.INSTANCE.toResponse(calculateInventoryKPIsUseCase.execute(query));
 	}
 }

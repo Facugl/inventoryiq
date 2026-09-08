@@ -60,6 +60,6 @@ public class CsvIngestionController {
 		IngestCsvFileCommand command = new IngestCsvFileCommand(
 				fileType, batch.totalRowsRead(), batch.candidateRows(), batch.preValidationRejections());
 
-		return IngestionSummaryResponseMapper.toResponse(ingestCsvFileUseCase.execute(command));
+		return IngestionSummaryResponseMapper.INSTANCE.toResponse(ingestCsvFileUseCase.execute(command));
 	}
 }

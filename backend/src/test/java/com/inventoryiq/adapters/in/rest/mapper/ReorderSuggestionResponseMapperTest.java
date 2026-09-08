@@ -16,7 +16,7 @@ class ReorderSuggestionResponseMapperTest {
 				1001L, "LEC-1001", "Leche Entera 1L", 1L, 2L, 5L,
 				100, LocalDate.parse("2026-08-03"), "justificación de prueba");
 
-		ReorderSuggestionResponse response = ReorderSuggestionResponseMapper.toResponse(result);
+		ReorderSuggestionResponse response = ReorderSuggestionResponseMapper.INSTANCE.toResponse(result);
 
 		assertEquals(1001L, response.productId());
 		assertEquals("LEC-1001", response.sku());

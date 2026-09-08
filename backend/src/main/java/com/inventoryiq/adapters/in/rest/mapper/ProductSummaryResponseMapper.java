@@ -1,14 +1,16 @@
 package com.inventoryiq.adapters.in.rest.mapper;
 
+import org.mapstruct.Mapper;
+import org.mapstruct.ReportingPolicy;
+import org.mapstruct.factory.Mappers;
+
 import com.inventoryiq.adapters.in.rest.dto.ProductSummaryResponse;
 import com.inventoryiq.application.port.in.ProductSummaryResult;
 
 /** Traduce la salida del caso de uso (application) al DTO público de la API REST. */
-public final class ProductSummaryResponseMapper {
-	private ProductSummaryResponseMapper() {
-	}
+@Mapper(unmappedTargetPolicy = ReportingPolicy.ERROR)
+public interface ProductSummaryResponseMapper {
+	ProductSummaryResponseMapper INSTANCE = Mappers.getMapper(ProductSummaryResponseMapper.class);
 
-	public static ProductSummaryResponse toResponse(ProductSummaryResult result) {
-		return new ProductSummaryResponse(result.productId(), result.sku(), result.name(), result.categoryId());
-	}
+	ProductSummaryResponse toResponse(ProductSummaryResult result);
 }

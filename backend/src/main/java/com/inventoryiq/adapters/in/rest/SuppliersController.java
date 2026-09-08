@@ -42,7 +42,7 @@ public class SuppliersController {
 	@Operation(summary = "Listar proveedores activos")
 	public List<SupplierResponse> getSuppliers() {
 		return listSuppliersUseCase.execute().stream()
-				.map(SupplierResponseMapper::toResponse)
+				.map(SupplierResponseMapper.INSTANCE::toResponse)
 				.toList();
 	}
 
@@ -52,6 +52,6 @@ public class SuppliersController {
 	public SupplierResponse updateLeadTime(
 			@PathVariable Long supplierId, @RequestBody @Valid UpdateSupplierLeadTimeRequest request) {
 		UpdateSupplierLeadTimeCommand command = new UpdateSupplierLeadTimeCommand(supplierId, request.leadTimeDays());
-		return SupplierResponseMapper.toResponse(updateSupplierLeadTimeUseCase.execute(command));
+		return SupplierResponseMapper.INSTANCE.toResponse(updateSupplierLeadTimeUseCase.execute(command));
 	}
 }

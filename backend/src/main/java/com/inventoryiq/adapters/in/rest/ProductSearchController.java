@@ -38,7 +38,7 @@ public class ProductSearchController {
 			description = "Filtro en memoria sobre el catálogo activo, por sku (código de barras o interno) o nombre, sin distinguir mayúsculas.")
 	public List<ProductSummaryResponse> search(@RequestParam("q") @NotBlank String q) {
 		return searchProductsUseCase.execute(new SearchProductsQuery(q)).stream()
-				.map(ProductSummaryResponseMapper::toResponse)
+				.map(ProductSummaryResponseMapper.INSTANCE::toResponse)
 				.toList();
 	}
 }

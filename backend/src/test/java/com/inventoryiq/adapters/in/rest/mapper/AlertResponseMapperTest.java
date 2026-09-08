@@ -18,7 +18,7 @@ class AlertResponseMapperTest {
 				1001L, "LEC-1001", "Leche Entera 1L", 1L, 2L,
 				AlertType.STOCKOUT, AlertSeverity.HIGH, LocalDate.parse("2026-08-01"));
 
-		AlertResponse response = AlertResponseMapper.toResponse(result);
+		AlertResponse response = AlertResponseMapper.INSTANCE.toResponse(result);
 
 		assertEquals(1001L, response.productId());
 		assertEquals("LEC-1001", response.sku());

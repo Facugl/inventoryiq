@@ -1,28 +1,16 @@
 package com.inventoryiq.adapters.in.rest.mapper;
 
+import org.mapstruct.Mapper;
+import org.mapstruct.ReportingPolicy;
+import org.mapstruct.factory.Mappers;
+
 import com.inventoryiq.adapters.in.rest.dto.RecommendationResponse;
 import com.inventoryiq.application.port.in.RecommendationResult;
 
 /** Traduce la salida del caso de uso (application) al DTO público de la API REST. */
-public final class RecommendationResponseMapper {
-	private RecommendationResponseMapper() {
-	}
+@Mapper(unmappedTargetPolicy = ReportingPolicy.ERROR)
+public interface RecommendationResponseMapper {
+	RecommendationResponseMapper INSTANCE = Mappers.getMapper(RecommendationResponseMapper.class);
 
-	public static RecommendationResponse toResponse(RecommendationResult result) {
-		return new RecommendationResponse(
-				result.recommendationId(),
-				result.productId(),
-				result.sku(),
-				result.productName(),
-				result.storeId(),
-				result.categoryId(),
-				result.supplierId(),
-				result.suggestedQuantity(),
-				result.orderDeadlineDate(),
-				result.justification(),
-				result.status(),
-				result.generationDate(),
-				result.feedbackComment(),
-				result.feedbackDate());
-	}
+	RecommendationResponse toResponse(RecommendationResult result);
 }

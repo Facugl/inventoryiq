@@ -18,7 +18,7 @@ class CriticalProductResponseMapperTest {
 				50, new ReorderPoint(60.0), 5.0,
 				ProductStatus.REQUIRES_REPLENISHMENT, new CriticalityLevel(33.33));
 
-		CriticalProductResponse response = CriticalProductResponseMapper.toResponse(result);
+		CriticalProductResponse response = CriticalProductResponseMapper.INSTANCE.toResponse(result);
 
 		assertEquals(1001L, response.productId());
 		assertEquals("LEC-1001", response.sku());

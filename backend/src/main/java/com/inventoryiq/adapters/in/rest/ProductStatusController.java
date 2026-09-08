@@ -56,6 +56,6 @@ public class ProductStatusController {
 
 		RecalculateProductStatusCommand command = new RecalculateProductStatusCommand(storeId, referenceDate);
 
-		return RecalculateProductStatusResponseMapper.toResponse(recalculateProductStatusUseCase.execute(command));
+		return RecalculateProductStatusResponseMapper.INSTANCE.toResponse(recalculateProductStatusUseCase.execute(command));
 	}
 }

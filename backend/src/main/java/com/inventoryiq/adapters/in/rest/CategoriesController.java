@@ -45,7 +45,7 @@ public class CategoriesController {
 			description = "Catálogo completo de categorías, con su categoría padre si es una subcategoría, y sus parámetros de negocio vigentes.")
 	public List<CategoryResponse> getCategories() {
 		return listCategoriesUseCase.execute().stream()
-				.map(CategoryResponseMapper::toResponse)
+				.map(CategoryResponseMapper.INSTANCE::toResponse)
 				.toList();
 	}
 
@@ -58,6 +58,6 @@ public class CategoriesController {
 			@PathVariable Long categoryId, @RequestBody @Valid UpdateCategoryParametersRequest request) {
 		UpdateCategoryParametersCommand command = new UpdateCategoryParametersCommand(
 				categoryId, request.maxCoverageDaysThreshold(), request.defaultExtraCoverageDays());
-		return CategoryResponseMapper.toResponse(updateCategoryParametersUseCase.execute(command));
+		return CategoryResponseMapper.INSTANCE.toResponse(updateCategoryParametersUseCase.execute(command));
 	}
 }

@@ -15,7 +15,7 @@ class InventoryKPIsResponseMapperTest {
 	void mapsEveryField() {
 		InventoryKPIsResult result = new InventoryKPIsResult(12.5, 8.3, new BigDecimal("1500.00"), 66.67, 3.2);
 
-		InventoryKPIsResponse response = InventoryKPIsResponseMapper.toResponse(result);
+		InventoryKPIsResponse response = InventoryKPIsResponseMapper.INSTANCE.toResponse(result);
 
 		assertEquals(12.5, response.stockoutRate());
 		assertEquals(8.3, response.averageDaysOfCoverage());
@@ -28,7 +28,7 @@ class InventoryKPIsResponseMapperTest {
 	void mapsNullFieldsWhenThereIsNotEnoughData() {
 		InventoryKPIsResult result = new InventoryKPIsResult(null, null, BigDecimal.ZERO, null, null);
 
-		InventoryKPIsResponse response = InventoryKPIsResponseMapper.toResponse(result);
+		InventoryKPIsResponse response = InventoryKPIsResponseMapper.INSTANCE.toResponse(result);
 
 		assertNull(response.stockoutRate());
 		assertNull(response.averageDaysOfCoverage());

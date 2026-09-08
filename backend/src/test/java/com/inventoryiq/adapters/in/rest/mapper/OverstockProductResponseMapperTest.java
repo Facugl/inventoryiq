@@ -16,7 +16,7 @@ class OverstockProductResponseMapperTest {
 				1001L, "LEC-1001", "Leche Entera 1L", 1L, 2L,
 				100, 45.5, new BigDecimal("45000.00"));
 
-		OverstockProductResponse response = OverstockProductResponseMapper.toResponse(result);
+		OverstockProductResponse response = OverstockProductResponseMapper.INSTANCE.toResponse(result);
 
 		assertEquals(1001L, response.productId());
 		assertEquals("LEC-1001", response.sku());

@@ -49,7 +49,7 @@ public class ProductClassificationController {
 		ClassifyProductsQuery query = ClassifyProductsQuery.of(storeId, categoryId, referenceDate);
 
 		return classifyProductsUseCase.execute(query).stream()
-				.map(ProductClassificationResponseMapper::toResponse)
+				.map(ProductClassificationResponseMapper.INSTANCE::toResponse)
 				.toList();
 	}
 }

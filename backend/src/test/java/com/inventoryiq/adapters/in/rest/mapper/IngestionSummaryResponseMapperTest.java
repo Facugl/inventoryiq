@@ -17,7 +17,7 @@ class IngestionSummaryResponseMapperTest {
 				List.of(new RowRejection(3, "producto_id 9999 no existe en el catálogo"),
 						new RowRejection(7, "fecha inválida")));
 
-		IngestionSummaryResponse response = IngestionSummaryResponseMapper.toResponse(result);
+		IngestionSummaryResponse response = IngestionSummaryResponseMapper.INSTANCE.toResponse(result);
 
 		assertEquals(10, response.totalRowsRead());
 		assertEquals(8, response.acceptedCount());

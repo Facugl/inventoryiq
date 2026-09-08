@@ -51,7 +51,7 @@ public class AlertsController {
 		GenerateAlertsQuery query = new GenerateAlertsQuery(storeId, referenceDate, type, severity);
 
 		return generateAlertsUseCase.execute(query).stream()
-				.map(AlertResponseMapper::toResponse)
+				.map(AlertResponseMapper.INSTANCE::toResponse)
 				.toList();
 	}
 }

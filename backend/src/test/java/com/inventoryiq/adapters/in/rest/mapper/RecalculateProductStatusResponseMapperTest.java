@@ -17,7 +17,7 @@ class RecalculateProductStatusResponseMapperTest {
 		RecalculateProductStatusResult result = new RecalculateProductStatusResult(1, List.of(
 				new StoreRecalculationSummary(1L, 3, 2, 4, new RecalculateRecommendationsResult(5, 3, 2, 1))));
 
-		RecalculateProductStatusResponse response = RecalculateProductStatusResponseMapper.toResponse(result);
+		RecalculateProductStatusResponse response = RecalculateProductStatusResponseMapper.INSTANCE.toResponse(result);
 
 		assertEquals(1, response.storesProcessed());
 		assertEquals(1, response.perStore().size());

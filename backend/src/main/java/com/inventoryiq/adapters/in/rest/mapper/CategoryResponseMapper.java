@@ -1,16 +1,16 @@
 package com.inventoryiq.adapters.in.rest.mapper;
 
+import org.mapstruct.Mapper;
+import org.mapstruct.ReportingPolicy;
+import org.mapstruct.factory.Mappers;
+
 import com.inventoryiq.adapters.in.rest.dto.CategoryResponse;
 import com.inventoryiq.application.port.in.CategoryResult;
 
 /** Traduce la salida del caso de uso (application) al DTO público de la API REST. */
-public final class CategoryResponseMapper {
-	private CategoryResponseMapper() {
-	}
+@Mapper(unmappedTargetPolicy = ReportingPolicy.ERROR)
+public interface CategoryResponseMapper {
+	CategoryResponseMapper INSTANCE = Mappers.getMapper(CategoryResponseMapper.class);
 
-	public static CategoryResponse toResponse(CategoryResult result) {
-		return new CategoryResponse(
-				result.categoryId(), result.name(), result.parentCategoryId(),
-				result.maxCoverageDaysThreshold(), result.defaultExtraCoverageDays());
-	}
+	CategoryResponse toResponse(CategoryResult result);
 }

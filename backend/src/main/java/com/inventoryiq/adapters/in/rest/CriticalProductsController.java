@@ -53,7 +53,7 @@ public class CriticalProductsController {
 		GetCriticalProductsQuery query = GetCriticalProductsQuery.of(storeId, categoryId, limit, referenceDate);
 
 		return getCriticalProductsUseCase.execute(query).stream()
-				.map(CriticalProductResponseMapper::toResponse)
+				.map(CriticalProductResponseMapper.INSTANCE::toResponse)
 				.toList();
 	}
 }

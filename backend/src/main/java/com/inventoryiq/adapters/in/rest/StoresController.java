@@ -33,7 +33,7 @@ public class StoresController {
 	@Operation(summary = "Listar sucursales activas")
 	public List<StoreResponse> getStores() {
 		return listStoresUseCase.execute().stream()
-				.map(StoreResponseMapper::toResponse)
+				.map(StoreResponseMapper.INSTANCE::toResponse)
 				.toList();
 	}
 }

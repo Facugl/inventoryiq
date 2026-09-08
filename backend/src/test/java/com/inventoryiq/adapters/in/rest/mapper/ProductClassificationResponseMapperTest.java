@@ -16,7 +16,7 @@ class ProductClassificationResponseMapperTest {
 				1001L, "LEC-1001", "Leche Entera 1L", 1L, 2L,
 				AbcClassification.A, XyzClassification.X);
 
-		ProductClassificationResponse response = ProductClassificationResponseMapper.toResponse(result);
+		ProductClassificationResponse response = ProductClassificationResponseMapper.INSTANCE.toResponse(result);
 
 		assertEquals(1001L, response.productId());
 		assertEquals("LEC-1001", response.sku());

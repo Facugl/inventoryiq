@@ -53,6 +53,6 @@ public class ForecastController {
 
 		ForecastDemandQuery query = new ForecastDemandQuery(productId, storeId, referenceDate, horizonDays);
 
-		return ForecastDemandResponseMapper.toResponse(forecastDemandUseCase.execute(query));
+		return ForecastDemandResponseMapper.INSTANCE.toResponse(forecastDemandUseCase.execute(query));
 	}
 }

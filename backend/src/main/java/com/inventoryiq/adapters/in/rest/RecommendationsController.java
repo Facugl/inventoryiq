@@ -80,7 +80,7 @@ public class RecommendationsController {
 		ListRecommendationsQuery query = new ListRecommendationsQuery(storeId, categoryId, supplierId, status);
 
 		return listRecommendationsUseCase.execute(query).stream()
-				.map(RecommendationResponseMapper::toResponse)
+				.map(RecommendationResponseMapper.INSTANCE::toResponse)
 				.toList();
 	}
 
@@ -104,6 +104,6 @@ public class RecommendationsController {
 		RegisterRecommendationFeedbackCommand command = new RegisterRecommendationFeedbackCommand(
 				recommendationId, request.status(), request.comment(), LocalDate.now(clock));
 
-		return RecommendationResponseMapper.toResponse(registerRecommendationFeedbackUseCase.execute(command));
+		return RecommendationResponseMapper.INSTANCE.toResponse(registerRecommendationFeedbackUseCase.execute(command));
 	}
 }

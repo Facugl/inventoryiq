@@ -19,7 +19,7 @@ class ForecastDemandResponseMapperTest {
 				List.of(new DemandForecastPeriod(
 						LocalDate.parse("2025-12-25"), LocalDate.parse("2025-12-31"), 1.333333, 20.0, 140)));
 
-		ForecastDemandResponse response = ForecastDemandResponseMapper.toResponse(result);
+		ForecastDemandResponse response = ForecastDemandResponseMapper.INSTANCE.toResponse(result);
 
 		assertEquals(1001L, response.productId());
 		assertEquals("LEC-1001", response.sku());
@@ -39,7 +39,7 @@ class ForecastDemandResponseMapperTest {
 		ForecastDemandResult result = new ForecastDemandResult(
 				1001L, "LEC-1001", "Leche Entera 1L", 1L, null, List.of());
 
-		ForecastDemandResponse response = ForecastDemandResponseMapper.toResponse(result);
+		ForecastDemandResponse response = ForecastDemandResponseMapper.INSTANCE.toResponse(result);
 
 		assertEquals(null, response.baseAds());
 		assertEquals(0, response.periods().size());

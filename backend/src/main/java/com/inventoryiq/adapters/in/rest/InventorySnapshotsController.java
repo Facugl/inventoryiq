@@ -47,6 +47,6 @@ public class InventorySnapshotsController {
 		RecordInventoryCountCommand command = new RecordInventoryCountCommand(
 				request.productId(), request.storeId(), countDate, request.stockActual());
 
-		return InventorySnapshotResponseMapper.toResponse(recordInventoryCountUseCase.execute(command));
+		return InventorySnapshotResponseMapper.INSTANCE.toResponse(recordInventoryCountUseCase.execute(command));
 	}
 }
