@@ -1,9 +1,26 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import {
+  Alert,
+  Box,
+  Button,
+  Link,
+  MenuItem,
+  Paper,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+} from '@mui/material'
 import { getOverstockProducts } from '../../api/overstockProducts'
-import { ApiError } from '../../api/http'
-import type { Category, OverstockProduct, OverstockSortBy, Store } from '../../api/types'
+import { getErrorMessage } from '../../shared/apiError'
+import type { Category, OverstockSortBy, Store } from '../../api/types'
 import { categoryLabel } from '../../shared/categoryLookup'
-import '../../shared/list-page.css'
 
 const SORT_OPTIONS: { value: OverstockSortBy; label: string }[] = [
   { value: 'IMMOBILIZED_VALUE', label: 'Valor inmovilizado' },
@@ -31,151 +48,116 @@ export function OverstockPage({ stores, categories, onSelectProduct }: Overstock
   const [storeId, setStoreId] = useState(stores[0].id)
   const [referenceDate, setReferenceDate] = useState(DEFAULT_REFERENCE_DATE)
   const [sortBy, setSortBy] = useState<OverstockSortBy>('IMMOBILIZED_VALUE')
-  const [products, setProducts] = useState<OverstockProduct[] | null>(null)
-  // Arranca en true: la carga inicial se dispara apenas monta (ver efecto de abajo).
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [appliedFilters, setAppliedFilters] = useState<Filters>({ storeId, referenceDate, sortBy })
 
-  const applyResult = (result: OverstockProduct[] | null, errorMessage: string | null) => {
-    setProducts(result)
-    setError(errorMessage)
-    setLoading(false)
-  }
-
-  const toApiParams = (filters: Filters) => ({
-    storeId: filters.storeId,
-    referenceDate: filters.referenceDate,
-    sortBy: filters.sortBy,
+  const {
+    data: products,
+    error,
+    isFetching,
+  } = useQuery({
+    queryKey: ['overstockProducts', appliedFilters],
+    queryFn: () => getOverstockProducts(appliedFilters),
   })
-
-  // Carga inicial. Todo setState ocurre dentro de then/catch (fuera del cuerpo
-  // síncrono del efecto) para no disparar el warning de set-state-in-effect.
-  useEffect(() => {
-    let cancelled = false
-
-    getOverstockProducts(toApiParams({ storeId, referenceDate, sortBy }))
-      .then((result) => {
-        if (!cancelled) applyResult(result, null)
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          applyResult(null, err instanceof ApiError ? err.message : 'No se pudo conectar con el servidor.')
-        }
-      })
-
-    return () => {
-      cancelled = true
-    }
-    // Solo la carga inicial: búsquedas siguientes las dispara handleSubmit.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
-    setLoading(true)
-    setError(null)
-    getOverstockProducts(toApiParams({ storeId, referenceDate, sortBy }))
-      .then((result) => applyResult(result, null))
-      .catch((err) => {
-        applyResult(null, err instanceof ApiError ? err.message : 'No se pudo conectar con el servidor.')
-      })
+    setAppliedFilters({ storeId, referenceDate, sortBy })
   }
 
   return (
-    <main className="page">
-      <header className="page-header">
-        <h1>Sobrestock</h1>
-        <p>Productos con cobertura excesiva que inmovilizan capital, candidatos a liquidación o promoción.</p>
-      </header>
+    <Box component="main" sx={{ p: 4 }}>
+      <Typography variant="h4" component="h1" gutterBottom>
+        Sobrestock
+      </Typography>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+        Productos con cobertura excesiva que inmovilizan capital, candidatos a liquidación o promoción.
+      </Typography>
 
-      <form className="filters" onSubmit={handleSubmit}>
-        <label>
-          Sucursal
-          <select value={storeId} onChange={(event) => setStoreId(Number(event.target.value))}>
-            {stores.map((store) => (
-              <option key={store.id} value={store.id}>
-                {store.name}
-              </option>
-            ))}
-          </select>
-        </label>
+      <Stack
+        component="form"
+        onSubmit={handleSubmit}
+        direction="row"
+        spacing={2}
+        useFlexGap
+        sx={{ flexWrap: 'wrap', alignItems: 'flex-end', mb: 3, p: 2, border: 1, borderColor: 'divider', borderRadius: 1 }}
+      >
+        <TextField select size="small" label="Sucursal" value={storeId} onChange={(event) => setStoreId(Number(event.target.value))}>
+          {stores.map((store) => (
+            <MenuItem key={store.id} value={store.id}>
+              {store.name}
+            </MenuItem>
+          ))}
+        </TextField>
 
-        <label>
-          Fecha de referencia
-          <input
-            type="date"
-            value={referenceDate}
-            onChange={(event) => setReferenceDate(event.target.value)}
-            required
-          />
-        </label>
+        <TextField
+          type="date"
+          size="small"
+          label="Fecha de referencia"
+          value={referenceDate}
+          onChange={(event) => setReferenceDate(event.target.value)}
+          required
+          slotProps={{ inputLabel: { shrink: true } }}
+        />
 
-        <label>
-          Ordenar por
-          <select value={sortBy} onChange={(event) => setSortBy(event.target.value as OverstockSortBy)}>
-            {SORT_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <TextField select size="small" label="Ordenar por" value={sortBy} onChange={(event) => setSortBy(event.target.value as OverstockSortBy)}>
+          {SORT_OPTIONS.map((option) => (
+            <MenuItem key={option.value} value={option.value}>
+              {option.label}
+            </MenuItem>
+          ))}
+        </TextField>
 
-        <button type="submit" disabled={loading}>
-          {loading ? 'Buscando…' : 'Buscar'}
-        </button>
-      </form>
+        <Button type="submit" variant="contained" disabled={isFetching}>
+          {isFetching ? 'Buscando…' : 'Buscar'}
+        </Button>
+      </Stack>
 
       {error && (
-        <p className="state state-error" role="alert">
-          {error}
-        </p>
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {getErrorMessage(error)}
+        </Alert>
       )}
 
-      {!error && !loading && products && products.length === 0 && (
-        <p className="state state-empty">No hay productos en sobrestock para esta sucursal en la fecha seleccionada.</p>
+      {!error && !isFetching && products && products.length === 0 && (
+        <Alert severity="info">No hay productos en sobrestock para esta sucursal en la fecha seleccionada.</Alert>
       )}
 
       {products && products.length > 0 && (
-        <div className="table-scroll">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>SKU</th>
-                <th>Producto</th>
-                <th>Categoría</th>
-                <th>Stock actual</th>
-                <th>Cobertura (días)</th>
-                <th>Valor inmovilizado</th>
-              </tr>
-            </thead>
-            <tbody>
+        <TableContainer component={Paper} variant="outlined">
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>SKU</TableCell>
+                <TableCell>Producto</TableCell>
+                <TableCell>Categoría</TableCell>
+                <TableCell>Stock actual</TableCell>
+                <TableCell>Cobertura (días)</TableCell>
+                <TableCell>Valor inmovilizado</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
               {products.map((product) => (
-                <tr key={product.productId}>
-                  <td>
+                <TableRow key={product.productId}>
+                  <TableCell>
                     {onSelectProduct ? (
-                      <button
-                        type="button"
-                        className="link-button"
-                        onClick={() => onSelectProduct(product.productId, product.storeId)}
-                      >
+                      <Link component="button" type="button" onClick={() => onSelectProduct(product.productId, product.storeId)}>
                         {product.sku}
-                      </button>
+                      </Link>
                     ) : (
                       product.sku
                     )}
-                  </td>
-                  <td>{product.productName}</td>
-                  <td>{categoryLabel(categories, product.categoryId)}</td>
-                  <td>{product.currentStock}</td>
-                  <td>{product.currentDaysOfCoverage.toFixed(1)}</td>
-                  <td>{currencyFormatter.format(product.immobilizedValue)}</td>
-                </tr>
+                  </TableCell>
+                  <TableCell>{product.productName}</TableCell>
+                  <TableCell>{categoryLabel(categories, product.categoryId)}</TableCell>
+                  <TableCell>{product.currentStock}</TableCell>
+                  <TableCell>{product.currentDaysOfCoverage.toFixed(1)}</TableCell>
+                  <TableCell>{currencyFormatter.format(product.immobilizedValue)}</TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+          </Table>
+        </TableContainer>
       )}
-    </main>
+    </Box>
   )
 }

@@ -1,18 +1,31 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  Alert,
+  Box,
+  Button,
+  MenuItem,
+  Paper,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+} from '@mui/material'
 import { getRecommendations, recalculateRecommendations, registerRecommendationFeedback } from '../../api/recommendations'
-import { ApiError } from '../../api/http'
-import type { Recommendation, RecalculateRecommendationsSummary, RecommendationStatus, Store } from '../../api/types'
-import '../../shared/list-page.css'
-import '../../shared/product-status.css'
+import { getErrorMessage } from '../../shared/apiError'
+import { showError, showSuccess } from '../../shared/toast'
+import { StatusChip } from '../../shared/StatusChip'
+import type { RecommendationStatus, Store } from '../../api/types'
 
 const STATUS_LABELS: Record<RecommendationStatus, string> = {
   PENDING: 'Pendiente',
   APPLIED: 'Aplicada',
   DISCARDED: 'Descartada',
-}
-
-function statusClassName(status: RecommendationStatus): string {
-  return `status status-${status.toLowerCase()}`
 }
 
 const STATUS_OPTIONS: { value: RecommendationStatus | ''; label: string }[] = [
@@ -21,10 +34,6 @@ const STATUS_OPTIONS: { value: RecommendationStatus | ''; label: string }[] = [
   { value: 'APPLIED', label: 'Aplicada' },
   { value: 'DISCARDED', label: 'Descartada' },
 ]
-
-function genericErrorMessage(err: unknown): string {
-  return err instanceof ApiError ? err.message : 'No se pudo conectar con el servidor.'
-}
 
 interface Filters {
   storeId: number
@@ -36,201 +45,169 @@ interface RecommendationsPageProps {
 }
 
 export function RecommendationsPage({ stores }: RecommendationsPageProps) {
+  const queryClient = useQueryClient()
+
   const [storeId, setStoreId] = useState(stores[0].id)
   const [status, setStatus] = useState<RecommendationStatus | ''>('')
-  const [recommendations, setRecommendations] = useState<Recommendation[] | null>(null)
-  // Arranca en true: la carga inicial se dispara apenas monta (ver efecto de abajo).
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [appliedFilters, setAppliedFilters] = useState<Filters>({ storeId, status })
 
-  const [recalculating, setRecalculating] = useState(false)
-  const [recalcResult, setRecalcResult] = useState<RecalculateRecommendationsSummary | null>(null)
-  const [recalcError, setRecalcError] = useState<string | null>(null)
+  const recommendationsQueryKey = ['recommendations', appliedFilters]
 
-  const [updatingId, setUpdatingId] = useState<number | null>(null)
-
-  const applyResult = (result: Recommendation[] | null, errorMessage: string | null) => {
-    setRecommendations(result)
-    setError(errorMessage)
-    setLoading(false)
-  }
-
-  const toApiParams = (filters: Filters) => ({
-    storeId: filters.storeId,
-    status: filters.status || undefined,
+  const {
+    data: recommendations,
+    error,
+    isFetching,
+  } = useQuery({
+    queryKey: recommendationsQueryKey,
+    queryFn: () =>
+      getRecommendations({ storeId: appliedFilters.storeId, status: appliedFilters.status || undefined }),
   })
 
-  // Carga inicial. Todo setState ocurre dentro de then/catch (fuera del cuerpo
-  // síncrono del efecto) para no disparar el warning de set-state-in-effect.
-  useEffect(() => {
-    let cancelled = false
+  const recalculateMutation = useMutation({
+    mutationFn: () => recalculateRecommendations(appliedFilters.storeId),
+    onSuccess: (summary) => {
+      showSuccess(
+        `${summary.totalGenerated} recomendaciones generadas (${summary.newCount} nuevas, ${summary.updatedCount} actualizadas, ${summary.autoDiscardedCount} auto-descartadas).`,
+      )
+      queryClient.invalidateQueries({ queryKey: recommendationsQueryKey })
+    },
+    onError: (err) => showError(getErrorMessage(err)),
+  })
 
-    getRecommendations(toApiParams({ storeId, status }))
-      .then((result) => {
-        if (!cancelled) applyResult(result, null)
-      })
-      .catch((err) => {
-        if (!cancelled) applyResult(null, genericErrorMessage(err))
-      })
-
-    return () => {
-      cancelled = true
-    }
-    // Solo la carga inicial: búsquedas siguientes las dispara handleSubmit.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  const feedbackMutation = useMutation({
+    mutationFn: ({ recommendationId, newStatus }: { recommendationId: number; newStatus: 'APPLIED' | 'DISCARDED' }) =>
+      registerRecommendationFeedback(recommendationId, newStatus),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(recommendationsQueryKey, (current: typeof recommendations) =>
+        current?.map((rec) => (rec.recommendationId === updated.recommendationId ? updated : rec)),
+      )
+      showSuccess(`Recomendación marcada como ${STATUS_LABELS[updated.status].toLowerCase()}.`)
+    },
+    onError: (err) => showError(getErrorMessage(err)),
+  })
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
-    setLoading(true)
-    setError(null)
-    getRecommendations(toApiParams({ storeId, status }))
-      .then((result) => applyResult(result, null))
-      .catch((err) => applyResult(null, genericErrorMessage(err)))
-  }
-
-  const handleRecalculate = () => {
-    setRecalculating(true)
-    setRecalcError(null)
-    setRecalcResult(null)
-
-    recalculateRecommendations(storeId)
-      .then((summary) => {
-        setRecalcResult(summary)
-        return getRecommendations(toApiParams({ storeId, status }))
-      })
-      .then((result) => applyResult(result, null))
-      .catch((err) => setRecalcError(genericErrorMessage(err)))
-      .finally(() => setRecalculating(false))
-  }
-
-  const handleFeedback = (recommendationId: number, newStatus: 'APPLIED' | 'DISCARDED') => {
-    setUpdatingId(recommendationId)
-    registerRecommendationFeedback(recommendationId, newStatus)
-      .then((updated) => {
-        setRecommendations((current) =>
-          current ? current.map((rec) => (rec.recommendationId === recommendationId ? updated : rec)) : current,
-        )
-      })
-      .catch((err) => setError(genericErrorMessage(err)))
-      .finally(() => setUpdatingId(null))
+    setAppliedFilters({ storeId, status })
   }
 
   return (
-    <main className="page">
-      <header className="page-header">
-        <h1>Recomendaciones</h1>
-        <p>Recomendaciones de compra persistidas, con su justificación. Marcá cada una como aplicada o descartada.</p>
-      </header>
+    <Box component="main" sx={{ p: 4 }}>
+      <Typography variant="h4" component="h1" gutterBottom>
+        Recomendaciones
+      </Typography>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+        Recomendaciones de compra persistidas, con su justificación. Marcá cada una como aplicada o descartada.
+      </Typography>
 
-      <form className="filters" onSubmit={handleSubmit}>
-        <label>
-          Sucursal
-          <select value={storeId} onChange={(event) => setStoreId(Number(event.target.value))}>
-            {stores.map((store) => (
-              <option key={store.id} value={store.id}>
-                {store.name}
-              </option>
-            ))}
-          </select>
-        </label>
+      <Stack
+        component="form"
+        onSubmit={handleSubmit}
+        direction="row"
+        spacing={2}
+        useFlexGap
+        sx={{ flexWrap: 'wrap', alignItems: 'flex-end', mb: 3, p: 2, border: 1, borderColor: 'divider', borderRadius: 1 }}
+      >
+        <TextField select size="small" label="Sucursal" value={storeId} onChange={(event) => setStoreId(Number(event.target.value))}>
+          {stores.map((store) => (
+            <MenuItem key={store.id} value={store.id}>
+              {store.name}
+            </MenuItem>
+          ))}
+        </TextField>
 
-        <label>
-          Estado
-          <select value={status} onChange={(event) => setStatus(event.target.value as RecommendationStatus | '')}>
-            {STATUS_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <TextField select size="small" label="Estado" value={status} onChange={(event) => setStatus(event.target.value as RecommendationStatus | '')}>
+          {STATUS_OPTIONS.map((option) => (
+            <MenuItem key={option.value} value={option.value}>
+              {option.label}
+            </MenuItem>
+          ))}
+        </TextField>
 
-        <button type="submit" disabled={loading}>
-          {loading ? 'Buscando…' : 'Buscar'}
-        </button>
+        <Button type="submit" variant="contained" disabled={isFetching}>
+          {isFetching ? 'Buscando…' : 'Buscar'}
+        </Button>
 
-        <button type="button" onClick={handleRecalculate} disabled={recalculating}>
-          {recalculating ? 'Recalculando…' : 'Recalcular recomendaciones'}
-        </button>
-      </form>
-
-      {recalcError && (
-        <p className="state state-error" role="alert">
-          {recalcError}
-        </p>
-      )}
-
-      {recalcResult && (
-        <p className="state state-empty">
-          {recalcResult.totalGenerated} recomendaciones generadas ({recalcResult.newCount} nuevas,{' '}
-          {recalcResult.updatedCount} actualizadas, {recalcResult.autoDiscardedCount} auto-descartadas).
-        </p>
-      )}
+        <Button type="button" variant="outlined" onClick={() => recalculateMutation.mutate()} disabled={recalculateMutation.isPending}>
+          {recalculateMutation.isPending ? 'Recalculando…' : 'Recalcular recomendaciones'}
+        </Button>
+      </Stack>
 
       {error && (
-        <p className="state state-error" role="alert">
-          {error}
-        </p>
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {getErrorMessage(error)}
+        </Alert>
       )}
 
-      {!error && !loading && recommendations && recommendations.length === 0 && (
-        <p className="state state-empty">No hay recomendaciones para esta sucursal con estos filtros.</p>
+      {!error && !isFetching && recommendations && recommendations.length === 0 && (
+        <Alert severity="info">No hay recomendaciones para esta sucursal con estos filtros.</Alert>
       )}
 
       {recommendations && recommendations.length > 0 && (
-        <div className="table-scroll">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>SKU</th>
-                <th>Producto</th>
-                <th>Cantidad sugerida</th>
-                <th>Fecha límite</th>
-                <th className="wrap-col">Justificación</th>
-                <th>Estado</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
+        <TableContainer component={Paper} variant="outlined">
+          {/*
+            Sin ancho por columna: el ancho fijo por px llevó a un
+            tira-y-afloja (angostar una columna desbordaba otra, ensanchar
+            la tabla entera la sacaba del viewport y obligaba a scrollear
+            para ver "Descartar"). table-layout: auto con whiteSpace: normal
+            en las columnas de texto largo alcanza para que el navegador
+            reparta el ancho solo, sin desbordar ni exigir scroll.
+          */}
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>SKU</TableCell>
+                <TableCell>Producto</TableCell>
+                <TableCell>Cantidad sugerida</TableCell>
+                <TableCell>Fecha límite</TableCell>
+                <TableCell sx={{ whiteSpace: 'normal' }}>Justificación</TableCell>
+                <TableCell>Estado</TableCell>
+                <TableCell align="right">Acciones</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
               {recommendations.map((rec) => (
-                <tr key={rec.recommendationId}>
-                  <td>{rec.sku}</td>
-                  <td>{rec.productName}</td>
-                  <td>{rec.suggestedQuantity}</td>
-                  <td>{rec.orderDeadlineDate}</td>
-                  <td className="wrap-col">{rec.justification}</td>
-                  <td>
-                    <span className={statusClassName(rec.status)}>{STATUS_LABELS[rec.status]}</span>
-                  </td>
-                  <td>
+                <TableRow key={rec.recommendationId}>
+                  <TableCell>{rec.sku}</TableCell>
+                  <TableCell sx={{ whiteSpace: 'normal' }}>{rec.productName}</TableCell>
+                  <TableCell>{rec.suggestedQuantity}</TableCell>
+                  <TableCell>{rec.orderDeadlineDate}</TableCell>
+                  <TableCell sx={{ whiteSpace: 'normal', minWidth: 280 }}>{rec.justification}</TableCell>
+                  <TableCell>
+                    <StatusChip statusKey={rec.status.toLowerCase()} label={STATUS_LABELS[rec.status]} />
+                  </TableCell>
+                  <TableCell align="right">
                     {rec.status === 'PENDING' ? (
-                      <div className="row-actions">
-                        <button
-                          type="button"
-                          onClick={() => handleFeedback(rec.recommendationId, 'APPLIED')}
-                          disabled={updatingId === rec.recommendationId}
+                      <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        <Button
+                          size="small"
+                          variant="contained"
+                          onClick={() => feedbackMutation.mutate({ recommendationId: rec.recommendationId, newStatus: 'APPLIED' })}
+                          disabled={feedbackMutation.isPending && feedbackMutation.variables?.recommendationId === rec.recommendationId}
+                          sx={{ width: 100 }}
                         >
                           Aplicar
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleFeedback(rec.recommendationId, 'DISCARDED')}
-                          disabled={updatingId === rec.recommendationId}
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => feedbackMutation.mutate({ recommendationId: rec.recommendationId, newStatus: 'DISCARDED' })}
+                          disabled={feedbackMutation.isPending && feedbackMutation.variables?.recommendationId === rec.recommendationId}
+                          sx={{ width: 100 }}
                         >
                           Descartar
-                        </button>
-                      </div>
+                        </Button>
+                      </Stack>
                     ) : (
                       rec.feedbackDate ?? '—'
                     )}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+          </Table>
+        </TableContainer>
       )}
-    </main>
+    </Box>
   )
 }

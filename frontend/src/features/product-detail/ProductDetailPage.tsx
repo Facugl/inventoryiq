@@ -1,8 +1,24 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import {
+  Alert,
+  Box,
+  Button,
+  MenuItem,
+  Paper,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+} from '@mui/material'
 import { getProductForecast } from '../../api/forecast'
-import { ApiError } from '../../api/http'
-import type { ProductForecast, Store } from '../../api/types'
-import '../../shared/list-page.css'
+import { getErrorMessage } from '../../shared/apiError'
+import type { Store } from '../../api/types'
 
 // Fecha de corte de los datos CSV simulados (docs/README_datos_simulados.md).
 const DEFAULT_REFERENCE_DATE = '2026-08-01'
@@ -16,6 +32,13 @@ export interface ProductSelection {
   storeId: number
 }
 
+interface AppliedSelection {
+  productId: number
+  storeId: number
+  referenceDate: string
+  horizonDays: number
+}
+
 interface ProductDetailPageProps {
   stores: Store[]
   initialSelection: ProductSelection | null
@@ -26,175 +49,158 @@ export function ProductDetailPage({ stores, initialSelection }: ProductDetailPag
   const [storeId, setStoreId] = useState(initialSelection?.storeId ?? stores[0].id)
   const [referenceDate, setReferenceDate] = useState(DEFAULT_REFERENCE_DATE)
   const [horizonDays, setHorizonDays] = useState(DEFAULT_HORIZON_DAYS)
-  const [forecast, setForecast] = useState<ProductForecast | null>(null)
-  // Solo arranca en true si llegamos con un producto ya elegido (ver efecto de abajo).
-  const [loading, setLoading] = useState(Boolean(initialSelection))
-  const [error, setError] = useState<string | null>(null)
-
-  const applyResult = (result: ProductForecast | null, errorMessage: string | null) => {
-    setForecast(result)
-    setError(errorMessage)
-    setLoading(false)
-  }
-
-  // Carga inicial, solo si llegamos desde otra pantalla con un producto elegido.
-  // Todo setState ocurre dentro de then/catch (fuera del cuerpo síncrono del
-  // efecto) para no disparar el warning de set-state-in-effect.
-  useEffect(() => {
-    if (!initialSelection) return
-    let cancelled = false
-
-    getProductForecast({
-      productId: initialSelection.productId,
-      storeId: initialSelection.storeId,
-      referenceDate: DEFAULT_REFERENCE_DATE,
-      horizonDays: Number(DEFAULT_HORIZON_DAYS),
-    })
-      .then((result) => {
-        if (!cancelled) applyResult(result, null)
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          applyResult(null, err instanceof ApiError ? err.message : 'No se pudo conectar con el servidor.')
+  const [validationError, setValidationError] = useState<string | null>(null)
+  const [appliedSelection, setAppliedSelection] = useState<AppliedSelection | null>(
+    initialSelection
+      ? {
+          productId: initialSelection.productId,
+          storeId: initialSelection.storeId,
+          referenceDate: DEFAULT_REFERENCE_DATE,
+          horizonDays: Number(DEFAULT_HORIZON_DAYS),
         }
-      })
+      : null,
+  )
 
-    return () => {
-      cancelled = true
-    }
-    // Solo la carga inicial: búsquedas siguientes las dispara handleSubmit.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  const {
+    data: forecast,
+    error,
+    isFetching,
+  } = useQuery({
+    queryKey: ['forecast', appliedSelection],
+    queryFn: () => getProductForecast(appliedSelection!),
+    enabled: appliedSelection !== null,
+  })
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
 
     const parsedProductId = Number(productId)
     if (!productId || !Number.isInteger(parsedProductId) || parsedProductId <= 0) {
-      setForecast(null)
-      setError('Ingresá un ID de producto válido.')
+      setValidationError('Ingresá un ID de producto válido.')
+      setAppliedSelection(null)
       return
     }
 
-    setLoading(true)
-    setError(null)
-    getProductForecast({ productId: parsedProductId, storeId, referenceDate, horizonDays: Number(horizonDays) })
-      .then((result) => applyResult(result, null))
-      .catch((err) => {
-        applyResult(null, err instanceof ApiError ? err.message : 'No se pudo conectar con el servidor.')
-      })
+    setValidationError(null)
+    setAppliedSelection({ productId: parsedProductId, storeId, referenceDate, horizonDays: Number(horizonDays) })
   }
 
+  const errorMessage = validationError ?? (error ? getErrorMessage(error) : null)
+
   return (
-    <main className="page">
-      <header className="page-header">
-        <h1>Detalle de producto</h1>
-        <p>
-          Proyección de demanda por producto. No incluye ficha completa ni histórico de ventas/stock: hoy el backend
-          solo expone la proyección (ver docs/InventoryIQ_Arquitectura.md).
-        </p>
-      </header>
+    <Box component="main" sx={{ p: 4 }}>
+      <Typography variant="h4" component="h1" gutterBottom>
+        Detalle de producto
+      </Typography>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 3, maxWidth: 720 }}>
+        Proyección de demanda por producto. No incluye ficha completa ni histórico de ventas/stock: hoy el backend
+        solo expone la proyección (ver docs/InventoryIQ_Arquitectura.md).
+      </Typography>
 
-      <form className="filters" onSubmit={handleSubmit}>
-        <label>
-          ID de producto
-          <input
-            type="number"
-            min={1}
-            value={productId}
-            onChange={(event) => setProductId(event.target.value)}
-            required
-          />
-        </label>
+      <Stack
+        component="form"
+        onSubmit={handleSubmit}
+        direction="row"
+        spacing={2}
+        useFlexGap
+        sx={{ flexWrap: 'wrap', alignItems: 'flex-end', mb: 3, p: 2, border: 1, borderColor: 'divider', borderRadius: 1 }}
+      >
+        <TextField
+          type="number"
+          size="small"
+          label="ID de producto"
+          value={productId}
+          onChange={(event) => setProductId(event.target.value)}
+          required
+          slotProps={{ htmlInput: { min: 1 } }}
+        />
 
-        <label>
-          Sucursal
-          <select value={storeId} onChange={(event) => setStoreId(Number(event.target.value))}>
-            {stores.map((store) => (
-              <option key={store.id} value={store.id}>
-                {store.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <TextField select size="small" label="Sucursal" value={storeId} onChange={(event) => setStoreId(Number(event.target.value))}>
+          {stores.map((store) => (
+            <MenuItem key={store.id} value={store.id}>
+              {store.name}
+            </MenuItem>
+          ))}
+        </TextField>
 
-        <label>
-          Fecha de referencia
-          <input
-            type="date"
-            value={referenceDate}
-            onChange={(event) => setReferenceDate(event.target.value)}
-            required
-          />
-        </label>
+        <TextField
+          type="date"
+          size="small"
+          label="Fecha de referencia"
+          value={referenceDate}
+          onChange={(event) => setReferenceDate(event.target.value)}
+          required
+          slotProps={{ inputLabel: { shrink: true } }}
+        />
 
-        <label>
-          Horizonte (días)
-          <input
-            type="number"
-            min={1}
-            value={horizonDays}
-            onChange={(event) => setHorizonDays(event.target.value)}
-            required
-          />
-        </label>
+        <TextField
+          type="number"
+          size="small"
+          label="Horizonte (días)"
+          value={horizonDays}
+          onChange={(event) => setHorizonDays(event.target.value)}
+          required
+          slotProps={{ htmlInput: { min: 1 } }}
+        />
 
-        <button type="submit" disabled={loading}>
-          {loading ? 'Buscando…' : 'Buscar'}
-        </button>
-      </form>
+        <Button type="submit" variant="contained" disabled={isFetching}>
+          {isFetching ? 'Buscando…' : 'Buscar'}
+        </Button>
+      </Stack>
 
-      {error && (
-        <p className="state state-error" role="alert">
-          {error}
-        </p>
+      {errorMessage && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {errorMessage}
+        </Alert>
       )}
 
-      {!error && !loading && !forecast && (
-        <p className="state state-empty">Ingresá un ID de producto para ver su proyección de demanda.</p>
+      {!errorMessage && !isFetching && !forecast && (
+        <Alert severity="info">Ingresá un ID de producto para ver su proyección de demanda.</Alert>
       )}
 
       {forecast && (
         <>
-          <h2>
+          <Typography variant="h6" component="h2" gutterBottom>
             {forecast.sku} — {forecast.productName}
-          </h2>
+          </Typography>
 
           {forecast.baseAds === null ? (
-            <p className="state state-empty">
+            <Alert severity="info">
               El producto existe, pero no tiene historial de ventas suficiente en esta sucursal para proyectar demanda.
-            </p>
+            </Alert>
           ) : (
             <>
-              <p>Venta promedio diaria base: {decimalFormatter.format(forecast.baseAds)} unidades/día</p>
-              <div className="table-scroll">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Desde</th>
-                      <th>Hasta</th>
-                      <th>Índice estacional</th>
-                      <th>ADS proyectado</th>
-                      <th>Demanda proyectada</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                Venta promedio diaria base: {decimalFormatter.format(forecast.baseAds)} unidades/día
+              </Typography>
+              <TableContainer component={Paper} variant="outlined">
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Desde</TableCell>
+                      <TableCell>Hasta</TableCell>
+                      <TableCell>Índice estacional</TableCell>
+                      <TableCell>ADS proyectado</TableCell>
+                      <TableCell>Demanda proyectada</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
                     {forecast.periods.map((period) => (
-                      <tr key={period.periodStart}>
-                        <td>{period.periodStart}</td>
-                        <td>{period.periodEnd}</td>
-                        <td>{decimalFormatter.format(period.seasonalIndex)}</td>
-                        <td>{decimalFormatter.format(period.projectedDailyAds)}</td>
-                        <td>{period.projectedTotalDemand}</td>
-                      </tr>
+                      <TableRow key={period.periodStart}>
+                        <TableCell>{period.periodStart}</TableCell>
+                        <TableCell>{period.periodEnd}</TableCell>
+                        <TableCell>{decimalFormatter.format(period.seasonalIndex)}</TableCell>
+                        <TableCell>{decimalFormatter.format(period.projectedDailyAds)}</TableCell>
+                        <TableCell>{period.projectedTotalDemand}</TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
-              </div>
+                  </TableBody>
+                </Table>
+              </TableContainer>
             </>
           )}
         </>
       )}
-    </main>
+    </Box>
   )
 }

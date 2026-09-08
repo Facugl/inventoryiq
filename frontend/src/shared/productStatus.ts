@@ -8,7 +8,3 @@ export const STATUS_LABELS: Record<ProductStatus, string> = {
   OVERSTOCK: 'Sobrestock',
   LOW_ROTATION: 'Baja rotación',
 }
-
-export function statusClassName(status: ProductStatus): string {
-  return `status status-${status.toLowerCase().replaceAll('_', '-')}`
-}

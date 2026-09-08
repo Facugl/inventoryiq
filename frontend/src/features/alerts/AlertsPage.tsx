@@ -1,10 +1,26 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import {
+  Alert,
+  Box,
+  Button,
+  MenuItem,
+  Paper,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+} from '@mui/material'
 import { getAlerts } from '../../api/alerts'
-import { ApiError } from '../../api/http'
-import type { Alert, AlertSeverity, AlertType, Category, Store } from '../../api/types'
+import { getErrorMessage } from '../../shared/apiError'
+import { StatusChip } from '../../shared/StatusChip'
+import type { Alert as AlertItem, AlertSeverity, AlertType, Category, Store } from '../../api/types'
 import { categoryLabel } from '../../shared/categoryLookup'
-import '../../shared/list-page.css'
-import '../../shared/product-status.css'
 
 const TYPE_LABELS: Record<AlertType, string> = {
   STOCKOUT: 'Quiebre de stock',
@@ -15,10 +31,6 @@ const SEVERITY_LABELS: Record<AlertSeverity, string> = {
   HIGH: 'Alta',
   MEDIUM: 'Media',
   LOW: 'Baja',
-}
-
-function severityClassName(severity: AlertSeverity): string {
-  return `status status-${severity.toLowerCase()}`
 }
 
 const TYPE_OPTIONS: { value: AlertType | ''; label: string }[] = [
@@ -37,10 +49,6 @@ const SEVERITY_OPTIONS: { value: AlertSeverity | ''; label: string }[] = [
 // Fecha de corte de los datos CSV simulados (docs/README_datos_simulados.md).
 const DEFAULT_REFERENCE_DATE = '2026-08-01'
 
-function genericErrorMessage(err: unknown): string {
-  return err instanceof ApiError ? err.message : 'No se pudo conectar con el servidor.'
-}
-
 interface Filters {
   storeId: number
   referenceDate: string
@@ -58,147 +66,128 @@ export function AlertsPage({ stores, categories }: AlertsPageProps) {
   const [referenceDate, setReferenceDate] = useState(DEFAULT_REFERENCE_DATE)
   const [type, setType] = useState<AlertType | ''>('')
   const [severity, setSeverity] = useState<AlertSeverity | ''>('')
-  const [alerts, setAlerts] = useState<Alert[] | null>(null)
-  // Arranca en true: la carga inicial se dispara apenas monta (ver efecto de abajo).
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [appliedFilters, setAppliedFilters] = useState<Filters>({ storeId, referenceDate, type, severity })
 
-  const applyResult = (result: Alert[] | null, errorMessage: string | null) => {
-    setAlerts(result)
-    setError(errorMessage)
-    setLoading(false)
-  }
-
-  const toApiParams = (filters: Filters) => ({
-    storeId: filters.storeId,
-    referenceDate: filters.referenceDate,
-    type: filters.type || undefined,
-    severity: filters.severity || undefined,
+  const {
+    data: alerts,
+    error,
+    isFetching,
+  } = useQuery<AlertItem[]>({
+    queryKey: ['alerts', appliedFilters],
+    queryFn: () =>
+      getAlerts({
+        storeId: appliedFilters.storeId,
+        referenceDate: appliedFilters.referenceDate,
+        type: appliedFilters.type || undefined,
+        severity: appliedFilters.severity || undefined,
+      }),
   })
-
-  // Carga inicial. Todo setState ocurre dentro de then/catch (fuera del cuerpo
-  // síncrono del efecto) para no disparar el warning de set-state-in-effect.
-  useEffect(() => {
-    let cancelled = false
-
-    getAlerts(toApiParams({ storeId, referenceDate, type, severity }))
-      .then((result) => {
-        if (!cancelled) applyResult(result, null)
-      })
-      .catch((err) => {
-        if (!cancelled) applyResult(null, genericErrorMessage(err))
-      })
-
-    return () => {
-      cancelled = true
-    }
-    // Solo la carga inicial: búsquedas siguientes las dispara handleSubmit.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
-    setLoading(true)
-    setError(null)
-    getAlerts(toApiParams({ storeId, referenceDate, type, severity }))
-      .then((result) => applyResult(result, null))
-      .catch((err) => applyResult(null, genericErrorMessage(err)))
+    setAppliedFilters({ storeId, referenceDate, type, severity })
   }
 
   return (
-    <main className="page">
-      <header className="page-header">
-        <h1>Alertas</h1>
-        <p>Productos en quiebre de stock o sobrestock que necesitan atención, con su severidad.</p>
-      </header>
+    <Box component="main" sx={{ p: 4 }}>
+      <Typography variant="h4" component="h1" gutterBottom>
+        Alertas
+      </Typography>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+        Productos en quiebre de stock o sobrestock que necesitan atención, con su severidad.
+      </Typography>
 
-      <form className="filters" onSubmit={handleSubmit}>
-        <label>
-          Sucursal
-          <select value={storeId} onChange={(event) => setStoreId(Number(event.target.value))}>
-            {stores.map((store) => (
-              <option key={store.id} value={store.id}>
-                {store.name}
-              </option>
-            ))}
-          </select>
-        </label>
+      <Stack
+        component="form"
+        onSubmit={handleSubmit}
+        direction="row"
+        spacing={2}
+        useFlexGap
+        sx={{ flexWrap: 'wrap', alignItems: 'flex-end', mb: 3, p: 2, border: 1, borderColor: 'divider', borderRadius: 1 }}
+      >
+        <TextField select size="small" label="Sucursal" value={storeId} onChange={(event) => setStoreId(Number(event.target.value))}>
+          {stores.map((store) => (
+            <MenuItem key={store.id} value={store.id}>
+              {store.name}
+            </MenuItem>
+          ))}
+        </TextField>
 
-        <label>
-          Fecha de referencia
-          <input
-            type="date"
-            value={referenceDate}
-            onChange={(event) => setReferenceDate(event.target.value)}
-            required
-          />
-        </label>
+        <TextField
+          type="date"
+          size="small"
+          label="Fecha de referencia"
+          value={referenceDate}
+          onChange={(event) => setReferenceDate(event.target.value)}
+          required
+          slotProps={{ inputLabel: { shrink: true } }}
+        />
 
-        <label>
-          Tipo
-          <select value={type} onChange={(event) => setType(event.target.value as AlertType | '')}>
-            {TYPE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <TextField select size="small" label="Tipo" value={type} onChange={(event) => setType(event.target.value as AlertType | '')}>
+          {TYPE_OPTIONS.map((option) => (
+            <MenuItem key={option.value} value={option.value}>
+              {option.label}
+            </MenuItem>
+          ))}
+        </TextField>
 
-        <label>
-          Severidad
-          <select value={severity} onChange={(event) => setSeverity(event.target.value as AlertSeverity | '')}>
-            {SEVERITY_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <TextField
+          select
+          size="small"
+          label="Severidad"
+          value={severity}
+          onChange={(event) => setSeverity(event.target.value as AlertSeverity | '')}
+        >
+          {SEVERITY_OPTIONS.map((option) => (
+            <MenuItem key={option.value} value={option.value}>
+              {option.label}
+            </MenuItem>
+          ))}
+        </TextField>
 
-        <button type="submit" disabled={loading}>
-          {loading ? 'Buscando…' : 'Buscar'}
-        </button>
-      </form>
+        <Button type="submit" variant="contained" disabled={isFetching}>
+          {isFetching ? 'Buscando…' : 'Buscar'}
+        </Button>
+      </Stack>
 
       {error && (
-        <p className="state state-error" role="alert">
-          {error}
-        </p>
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {getErrorMessage(error)}
+        </Alert>
       )}
 
-      {!error && !loading && alerts && alerts.length === 0 && (
-        <p className="state state-empty">No hay alertas para esta sucursal con estos filtros.</p>
+      {!error && !isFetching && alerts && alerts.length === 0 && (
+        <Alert severity="info">No hay alertas para esta sucursal con estos filtros.</Alert>
       )}
 
       {alerts && alerts.length > 0 && (
-        <div className="table-scroll">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>SKU</th>
-                <th>Producto</th>
-                <th>Categoría</th>
-                <th>Tipo</th>
-                <th>Severidad</th>
-              </tr>
-            </thead>
-            <tbody>
+        <TableContainer component={Paper} variant="outlined">
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>SKU</TableCell>
+                <TableCell>Producto</TableCell>
+                <TableCell>Categoría</TableCell>
+                <TableCell>Tipo</TableCell>
+                <TableCell>Severidad</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
               {alerts.map((alert) => (
-                <tr key={`${alert.productId}-${alert.type}`}>
-                  <td>{alert.sku}</td>
-                  <td>{alert.productName}</td>
-                  <td>{categoryLabel(categories, alert.categoryId)}</td>
-                  <td>{TYPE_LABELS[alert.type]}</td>
-                  <td>
-                    <span className={severityClassName(alert.severity)}>{SEVERITY_LABELS[alert.severity]}</span>
-                  </td>
-                </tr>
+                <TableRow key={`${alert.productId}-${alert.type}`}>
+                  <TableCell>{alert.sku}</TableCell>
+                  <TableCell>{alert.productName}</TableCell>
+                  <TableCell>{categoryLabel(categories, alert.categoryId)}</TableCell>
+                  <TableCell>{TYPE_LABELS[alert.type]}</TableCell>
+                  <TableCell>
+                    <StatusChip statusKey={alert.severity.toLowerCase()} label={SEVERITY_LABELS[alert.severity]} />
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+          </Table>
+        </TableContainer>
       )}
-    </main>
+    </Box>
   )
 }

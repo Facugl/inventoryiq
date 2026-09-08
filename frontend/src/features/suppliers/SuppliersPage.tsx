@@ -1,153 +1,156 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { yupResolver } from '@hookform/resolvers/yup'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  Paper,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+} from '@mui/material'
 import { getSuppliers, updateSupplierLeadTime } from '../../api/suppliers'
-import { ApiError } from '../../api/http'
+import { getErrorMessage } from '../../shared/apiError'
+import { showSuccess } from '../../shared/toast'
 import type { Supplier } from '../../api/types'
-import '../../shared/list-page.css'
-import './SuppliersPage.css'
+import { leadTimeSchema, type LeadTimeFormValues } from './validation/leadTimeSchema'
 
-function genericErrorMessage(err: unknown): string {
-  return err instanceof ApiError ? err.message : 'No se pudo conectar con el servidor.'
+interface LeadTimeEditRowProps {
+  supplier: Supplier
+  onCancel: () => void
+  onSaved: () => void
+}
+
+function LeadTimeEditRow({ supplier, onCancel, onSaved }: LeadTimeEditRowProps) {
+  const queryClient = useQueryClient()
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LeadTimeFormValues>({
+    resolver: yupResolver(leadTimeSchema),
+    defaultValues: { leadTimeDays: supplier.leadTimeDays },
+  })
+
+  const mutation = useMutation({
+    mutationFn: (values: LeadTimeFormValues) => updateSupplierLeadTime(supplier.supplierId, values.leadTimeDays),
+    onSuccess: (updated) => {
+      queryClient.setQueryData<Supplier[]>(['suppliers'], (current) =>
+        current?.map((s) => (s.supplierId === updated.supplierId ? updated : s)),
+      )
+      showSuccess(`Lead time de "${updated.businessName}" actualizado.`)
+      onSaved()
+    },
+  })
+
+  const rowError = errors.leadTimeDays?.message ?? (mutation.error ? getErrorMessage(mutation.error) : null)
+
+  return (
+    <>
+      <TableCell>
+        <TextField
+          type="number"
+          size="small"
+          autoFocus
+          slotProps={{ htmlInput: { min: 1 } }}
+          error={Boolean(rowError)}
+          helperText={rowError}
+          sx={{ width: 110 }}
+          {...register('leadTimeDays')}
+        />
+      </TableCell>
+      <TableCell>{supplier.paymentTerms}</TableCell>
+      <TableCell>
+        <Stack direction="row" spacing={1}>
+          <Button
+            size="small"
+            variant="contained"
+            onClick={handleSubmit((values) => mutation.mutate(values))}
+            disabled={mutation.isPending}
+          >
+            {mutation.isPending ? 'Guardando…' : 'Guardar'}
+          </Button>
+          <Button size="small" variant="outlined" onClick={onCancel} disabled={mutation.isPending}>
+            Cancelar
+          </Button>
+        </Stack>
+      </TableCell>
+    </>
+  )
 }
 
 export function SuppliersPage() {
-  const [suppliers, setSuppliers] = useState<Supplier[] | null>(null)
-  const [loadError, setLoadError] = useState<string | null>(null)
-
   const [editingId, setEditingId] = useState<number | null>(null)
-  const [draftLeadTime, setDraftLeadTime] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [rowError, setRowError] = useState<string | null>(null)
 
-  // Carga inicial. Todo setState ocurre dentro de then/catch (fuera del cuerpo
-  // síncrono del efecto) para no disparar el warning de set-state-in-effect.
-  useEffect(() => {
-    let cancelled = false
-
-    getSuppliers()
-      .then((result) => {
-        if (!cancelled) setSuppliers(result)
-      })
-      .catch((err) => {
-        if (!cancelled) setLoadError(genericErrorMessage(err))
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  const startEditing = (supplier: Supplier) => {
-    setEditingId(supplier.supplierId)
-    setDraftLeadTime(String(supplier.leadTimeDays))
-    setRowError(null)
-  }
-
-  const cancelEditing = () => {
-    setEditingId(null)
-    setRowError(null)
-  }
-
-  const saveLeadTime = (supplierId: number) => {
-    const parsed = Number(draftLeadTime)
-    if (draftLeadTime === '' || !Number.isInteger(parsed) || parsed <= 0) {
-      setRowError('Ingresá un número entero mayor a 0.')
-      return
-    }
-
-    setSaving(true)
-    setRowError(null)
-    updateSupplierLeadTime(supplierId, parsed)
-      .then((updated) => {
-        setSuppliers((current) =>
-          (current ?? []).map((supplier) => (supplier.supplierId === supplierId ? updated : supplier)),
-        )
-        setEditingId(null)
-      })
-      .catch((err) => setRowError(genericErrorMessage(err)))
-      .finally(() => setSaving(false))
-  }
+  const {
+    data: suppliers,
+    error: loadError,
+  } = useQuery({ queryKey: ['suppliers'], queryFn: getSuppliers })
 
   return (
-    <main className="page">
-      <header className="page-header">
-        <h1>Proveedores</h1>
-        <p>
-          Catálogo de proveedores activos. Sin ingesta automática: la coordinación real con proveedores es por
-          WhatsApp, sin ningún sistema del que importar esta información — el lead time se corrige a mano, a medida
-          que se lo conoce mejor en la práctica.
-        </p>
-      </header>
+    <Box component="main" sx={{ p: 4 }}>
+      <Typography variant="h4" component="h1" gutterBottom>
+        Proveedores
+      </Typography>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 3, maxWidth: 720 }}>
+        Catálogo de proveedores activos. Sin ingesta automática: la coordinación real con proveedores es por
+        WhatsApp, sin ningún sistema del que importar esta información — el lead time se corrige a mano, a medida
+        que se lo conoce mejor en la práctica.
+      </Typography>
 
-      {loadError && (
-        <p className="state state-error" role="alert">
-          {loadError}
-        </p>
-      )}
+      {loadError && <Alert severity="error">{getErrorMessage(loadError)}</Alert>}
 
-      {!loadError && !suppliers && <p className="state">Cargando…</p>}
+      {!loadError && !suppliers && <CircularProgress size={24} />}
 
-      {suppliers && suppliers.length === 0 && (
-        <p className="state state-empty">No hay proveedores activos cargados.</p>
-      )}
+      {suppliers && suppliers.length === 0 && <Alert severity="info">No hay proveedores activos cargados.</Alert>}
 
       {suppliers && suppliers.length > 0 && (
-        <div className="table-scroll">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Razón social</th>
-                <th>Lead time (días)</th>
-                <th>Condición de pago</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
+        <TableContainer component={Paper} variant="outlined">
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Razón social</TableCell>
+                <TableCell>Lead time (días)</TableCell>
+                <TableCell>Condición de pago</TableCell>
+                <TableCell></TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
               {suppliers.map((supplier) => (
-                <tr key={supplier.supplierId}>
-                  <td>{supplier.businessName}</td>
-                  <td>
-                    {editingId === supplier.supplierId ? (
-                      <input
-                        type="number"
-                        min={1}
-                        value={draftLeadTime}
-                        onChange={(event) => setDraftLeadTime(event.target.value)}
-                        autoFocus
-                        className="numeric-input"
-                      />
-                    ) : (
-                      supplier.leadTimeDays
-                    )}
-                  </td>
-                  <td>{supplier.paymentTerms}</td>
-                  <td className="row-actions">
-                    {editingId === supplier.supplierId ? (
-                      <>
-                        <button type="button" onClick={() => saveLeadTime(supplier.supplierId)} disabled={saving}>
-                          {saving ? 'Guardando…' : 'Guardar'}
-                        </button>
-                        <button type="button" onClick={cancelEditing} disabled={saving}>
-                          Cancelar
-                        </button>
-                      </>
-                    ) : (
-                      <button type="button" onClick={() => startEditing(supplier)}>
-                        Editar lead time
-                      </button>
-                    )}
-                  </td>
-                </tr>
+                <TableRow key={supplier.supplierId}>
+                  <TableCell>{supplier.businessName}</TableCell>
+                  {editingId === supplier.supplierId ? (
+                    <LeadTimeEditRow
+                      supplier={supplier}
+                      onCancel={() => setEditingId(null)}
+                      onSaved={() => setEditingId(null)}
+                    />
+                  ) : (
+                    <>
+                      <TableCell>{supplier.leadTimeDays}</TableCell>
+                      <TableCell>{supplier.paymentTerms}</TableCell>
+                      <TableCell>
+                        <Button size="small" onClick={() => setEditingId(supplier.supplierId)}>
+                          Editar lead time
+                        </Button>
+                      </TableCell>
+                    </>
+                  )}
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+          </Table>
+        </TableContainer>
       )}
-
-      {rowError && (
-        <p className="state state-error" role="alert">
-          {rowError}
-        </p>
-      )}
-    </main>
+    </Box>
   )
 }

@@ -1,11 +1,26 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import {
+  Alert,
+  Box,
+  Button,
+  MenuItem,
+  Paper,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+} from '@mui/material'
 import { getProductClassification } from '../../api/classification'
-import { ApiError } from '../../api/http'
-import type { AbcClassification, Category, ProductClassification, Store, XyzClassification } from '../../api/types'
+import { getErrorMessage } from '../../shared/apiError'
+import { StatusChip } from '../../shared/StatusChip'
+import type { AbcClassification, Category, Store, XyzClassification } from '../../api/types'
 import { categoryLabel } from '../../shared/categoryLookup'
-import '../../shared/list-page.css'
-import '../../shared/product-status.css'
-import './ClassificationPage.css'
 
 const ABC_LABELS: Record<AbcClassification, string> = {
   A: 'A — Alto valor',
@@ -19,16 +34,8 @@ const XYZ_LABELS: Record<XyzClassification, string> = {
   Z: 'Z — Demanda errática',
 }
 
-function badgeClassName(letter: string): string {
-  return `status status-${letter.toLowerCase()}`
-}
-
 // Fecha de corte de los datos CSV simulados (docs/README_datos_simulados.md).
 const DEFAULT_REFERENCE_DATE = '2026-08-01'
-
-function genericErrorMessage(err: unknown): string {
-  return err instanceof ApiError ? err.message : 'No se pudo conectar con el servidor.'
-}
 
 interface Filters {
   storeId: number
@@ -43,146 +50,117 @@ interface ClassificationPageProps {
 export function ClassificationPage({ stores, categories }: ClassificationPageProps) {
   const [storeId, setStoreId] = useState(stores[0].id)
   const [referenceDate, setReferenceDate] = useState(DEFAULT_REFERENCE_DATE)
-  const [products, setProducts] = useState<ProductClassification[] | null>(null)
-  // Arranca en true: la carga inicial se dispara apenas monta (ver efecto de abajo).
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [appliedFilters, setAppliedFilters] = useState<Filters>({ storeId, referenceDate })
 
-  const applyResult = (result: ProductClassification[] | null, errorMessage: string | null) => {
-    setProducts(result)
-    setError(errorMessage)
-    setLoading(false)
-  }
-
-  const toApiParams = (filters: Filters) => ({
-    storeId: filters.storeId,
-    referenceDate: filters.referenceDate,
+  const {
+    data: products,
+    error,
+    isFetching,
+  } = useQuery({
+    queryKey: ['classification', appliedFilters],
+    queryFn: () => getProductClassification(appliedFilters),
   })
-
-  // Carga inicial. Todo setState ocurre dentro de then/catch (fuera del cuerpo
-  // síncrono del efecto) para no disparar el warning de set-state-in-effect.
-  useEffect(() => {
-    let cancelled = false
-
-    getProductClassification(toApiParams({ storeId, referenceDate }))
-      .then((result) => {
-        if (!cancelled) applyResult(result, null)
-      })
-      .catch((err) => {
-        if (!cancelled) applyResult(null, genericErrorMessage(err))
-      })
-
-    return () => {
-      cancelled = true
-    }
-    // Solo la carga inicial: búsquedas siguientes las dispara handleSubmit.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
-    setLoading(true)
-    setError(null)
-    getProductClassification(toApiParams({ storeId, referenceDate }))
-      .then((result) => applyResult(result, null))
-      .catch((err) => applyResult(null, genericErrorMessage(err)))
+    setAppliedFilters({ storeId, referenceDate })
   }
 
   return (
-    <main className="page">
-      <header className="page-header">
-        <h1>Clasificación ABC/XYZ</h1>
-        <p>
-          ABC clasifica por contribución al valor de venta; XYZ, por variabilidad de la demanda. Cruzarlas prioriza el
-          esfuerzo de gestión: un producto AX merece control estricto, un CZ puede gestionarse con reglas simples.
-        </p>
-      </header>
+    <Box component="main" sx={{ p: 4 }}>
+      <Typography variant="h4" component="h1" gutterBottom>
+        Clasificación ABC/XYZ
+      </Typography>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 2, maxWidth: 800 }}>
+        ABC clasifica por contribución al valor de venta; XYZ, por variabilidad de la demanda. Cruzarlas prioriza el
+        esfuerzo de gestión: un producto AX merece control estricto, un CZ puede gestionarse con reglas simples.
+      </Typography>
 
-      <div className="legend">
+      <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', mb: 3 }}>
         {Object.entries(ABC_LABELS).map(([letter, label]) => (
-          <span key={letter} className={badgeClassName(letter)}>
-            {label}
-          </span>
+          <StatusChip key={letter} statusKey={letter.toLowerCase()} label={label} />
         ))}
         {Object.entries(XYZ_LABELS).map(([letter, label]) => (
-          <span key={letter} className={badgeClassName(letter)}>
-            {label}
-          </span>
+          <StatusChip key={letter} statusKey={letter.toLowerCase()} label={label} />
         ))}
-      </div>
+      </Stack>
 
-      <form className="filters" onSubmit={handleSubmit}>
-        <label>
-          Sucursal
-          <select value={storeId} onChange={(event) => setStoreId(Number(event.target.value))}>
-            {stores.map((store) => (
-              <option key={store.id} value={store.id}>
-                {store.name}
-              </option>
-            ))}
-          </select>
-        </label>
+      <Stack
+        component="form"
+        onSubmit={handleSubmit}
+        direction="row"
+        spacing={2}
+        useFlexGap
+        sx={{ flexWrap: 'wrap', alignItems: 'flex-end', mb: 3, p: 2, border: 1, borderColor: 'divider', borderRadius: 1 }}
+      >
+        <TextField select size="small" label="Sucursal" value={storeId} onChange={(event) => setStoreId(Number(event.target.value))}>
+          {stores.map((store) => (
+            <MenuItem key={store.id} value={store.id}>
+              {store.name}
+            </MenuItem>
+          ))}
+        </TextField>
 
-        <label>
-          Fecha de referencia
-          <input
-            type="date"
-            value={referenceDate}
-            onChange={(event) => setReferenceDate(event.target.value)}
-            required
-          />
-        </label>
+        <TextField
+          type="date"
+          size="small"
+          label="Fecha de referencia"
+          value={referenceDate}
+          onChange={(event) => setReferenceDate(event.target.value)}
+          required
+          slotProps={{ inputLabel: { shrink: true } }}
+        />
 
-        <button type="submit" disabled={loading}>
-          {loading ? 'Buscando…' : 'Buscar'}
-        </button>
-      </form>
+        <Button type="submit" variant="contained" disabled={isFetching}>
+          {isFetching ? 'Buscando…' : 'Buscar'}
+        </Button>
+      </Stack>
 
       {error && (
-        <p className="state state-error" role="alert">
-          {error}
-        </p>
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {getErrorMessage(error)}
+        </Alert>
       )}
 
-      {!error && !loading && products && products.length === 0 && (
-        <p className="state state-empty">No hay productos clasificados para esta sucursal en la fecha seleccionada.</p>
+      {!error && !isFetching && products && products.length === 0 && (
+        <Alert severity="info">No hay productos clasificados para esta sucursal en la fecha seleccionada.</Alert>
       )}
 
       {products && products.length > 0 && (
-        <div className="table-scroll">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>SKU</th>
-                <th>Producto</th>
-                <th>Categoría</th>
-                <th>ABC</th>
-                <th>XYZ</th>
-                <th>Matriz</th>
-              </tr>
-            </thead>
-            <tbody>
+        <TableContainer component={Paper} variant="outlined">
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>SKU</TableCell>
+                <TableCell>Producto</TableCell>
+                <TableCell>Categoría</TableCell>
+                <TableCell>ABC</TableCell>
+                <TableCell>XYZ</TableCell>
+                <TableCell>Matriz</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
               {products.map((product) => (
-                <tr key={product.productId}>
-                  <td>{product.sku}</td>
-                  <td>{product.productName}</td>
-                  <td>{categoryLabel(categories, product.categoryId)}</td>
-                  <td>
-                    <span className={badgeClassName(product.abcClass)}>{product.abcClass}</span>
-                  </td>
-                  <td>
-                    <span className={badgeClassName(product.xyzClass)}>{product.xyzClass}</span>
-                  </td>
-                  <td>
+                <TableRow key={product.productId}>
+                  <TableCell>{product.sku}</TableCell>
+                  <TableCell>{product.productName}</TableCell>
+                  <TableCell>{categoryLabel(categories, product.categoryId)}</TableCell>
+                  <TableCell>
+                    <StatusChip statusKey={product.abcClass.toLowerCase()} label={product.abcClass} />
+                  </TableCell>
+                  <TableCell>
+                    <StatusChip statusKey={product.xyzClass.toLowerCase()} label={product.xyzClass} />
+                  </TableCell>
+                  <TableCell>
                     {product.abcClass}
                     {product.xyzClass}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+          </Table>
+        </TableContainer>
       )}
-    </main>
+    </Box>
   )
 }

@@ -1,32 +1,12 @@
+/*
+ * Los colores vivían acá como custom properties hasta la migración a MUI —
+ * ahora la fuente de verdad es theme/palette.ts (mismos valores, para no
+ * cambiar la identidad visual). CssBaseline (de MUI) ya se encarga del reset
+ * de fuente/antialiasing/color de fondo; acá solo queda el layout que MUI no
+ * conoce.
+ */
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-
-  font: 16px/145% var(--sans);
   color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-  }
 }
 
 body {
@@ -38,10 +18,4 @@ body {
   max-width: 1200px;
   margin: 0 auto;
   min-height: 100svh;
-}
-
-h1,
-h2 {
-  color: var(--text-h);
-  font-weight: 500;
 }

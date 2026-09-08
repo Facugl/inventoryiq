@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { Alert, Box, Button, CircularProgress, Stack } from '@mui/material'
 import { getStores } from './api/stores'
 import { getCategories } from './api/categories'
-import { ApiError } from './api/http'
-import type { Category, Store } from './api/types'
+import { getErrorMessage } from './shared/apiError'
 import { HomePage } from './features/home/HomePage'
 import { CriticalProductsPage } from './features/critical-products/CriticalProductsPage'
 import { OverstockPage } from './features/overstock/OverstockPage'
@@ -12,7 +13,6 @@ import { AlertsPage } from './features/alerts/AlertsPage'
 import { ClassificationPage } from './features/classification/ClassificationPage'
 import { SuppliersPage } from './features/suppliers/SuppliersPage'
 import { AdminPage } from './features/admin/AdminPage'
-import './App.css'
 
 type ScreenKey =
   | 'home'
@@ -41,33 +41,16 @@ function App() {
   const [screen, setScreen] = useState<ScreenKey>('home')
   const [selection, setSelection] = useState<ProductSelection | null>(null)
 
-  const [stores, setStores] = useState<Store[] | null>(null)
-  const [categories, setCategories] = useState<Category[] | null>(null)
-  const [catalogError, setCatalogError] = useState<string | null>(null)
+  const {
+    data: stores,
+    error: storesError,
+  } = useQuery({ queryKey: ['stores'], queryFn: getStores })
+  const {
+    data: categories,
+    error: categoriesError,
+  } = useQuery({ queryKey: ['categories'], queryFn: getCategories })
 
-  // Se cargan una sola vez, apenas monta. Todo setState ocurre dentro de
-  // then/catch (fuera del cuerpo síncrono del efecto) para no disparar el
-  // warning de set-state-in-effect.
-  useEffect(() => {
-    let cancelled = false
-
-    Promise.all([getStores(), getCategories()])
-      .then(([storeList, categoryList]) => {
-        if (!cancelled) {
-          setStores(storeList)
-          setCategories(categoryList)
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setCatalogError(err instanceof ApiError ? err.message : 'No se pudo conectar con el servidor.')
-        }
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  const catalogError = storesError ? getErrorMessage(storesError) : categoriesError ? getErrorMessage(categoriesError) : null
 
   const selectProduct = (productId: number, storeId: number) => {
     setSelection({ productId, storeId })
@@ -76,34 +59,43 @@ function App() {
 
   if (catalogError) {
     return (
-      <main style={{ padding: 32 }}>
-        <p role="alert">No se pudo cargar el catálogo de sucursales/categorías: {catalogError}</p>
-      </main>
+      <Box sx={{ p: 4 }}>
+        <Alert severity="error">No se pudo cargar el catálogo de sucursales/categorías: {catalogError}</Alert>
+      </Box>
     )
   }
 
   if (!stores || !categories) {
     return (
-      <main style={{ padding: 32 }}>
-        <p>Cargando…</p>
-      </main>
+      <Box sx={{ p: 4 }}>
+        <CircularProgress size={24} />
+      </Box>
     )
   }
 
   return (
     <>
-      <nav className="app-nav">
+      <Stack
+        component="nav"
+        direction="row"
+        sx={{ flexWrap: 'wrap', gap: 0.5, px: { xs: 2, sm: 4 }, pt: 1.5, borderBottom: 1, borderColor: 'divider' }}
+      >
         {NAV_ITEMS.map((item) => (
-          <button
+          <Button
             key={item.key}
-            type="button"
-            className={item.key === screen ? 'active' : ''}
             onClick={() => setScreen(item.key)}
+            sx={{
+              borderRadius: 0,
+              borderBottom: 2,
+              borderColor: item.key === screen ? 'primary.main' : 'transparent',
+              color: item.key === screen ? 'text.primary' : 'text.secondary',
+              py: 1.25,
+            }}
           >
             {item.label}
-          </button>
+          </Button>
         ))}
-      </nav>
+      </Stack>
 
       {screen === 'home' && <HomePage stores={stores} />}
       {screen === 'alerts' && <AlertsPage stores={stores} categories={categories} />}

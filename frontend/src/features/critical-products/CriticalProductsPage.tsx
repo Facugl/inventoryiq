@@ -1,11 +1,28 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import {
+  Alert,
+  Box,
+  Button,
+  Link,
+  MenuItem,
+  Paper,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+} from '@mui/material'
 import { getCriticalProducts } from '../../api/criticalProducts'
-import { ApiError } from '../../api/http'
-import type { Category, CriticalProduct, Store } from '../../api/types'
+import { getErrorMessage } from '../../shared/apiError'
+import { StatusChip } from '../../shared/StatusChip'
+import type { Category, Store } from '../../api/types'
 import { categoryLabel } from '../../shared/categoryLookup'
-import { STATUS_LABELS, statusClassName } from '../../shared/productStatus'
-import '../../shared/list-page.css'
-import '../../shared/product-status.css'
+import { STATUS_LABELS } from '../../shared/productStatus'
 
 // Fecha de corte de los datos CSV simulados (docs/README_datos_simulados.md).
 const DEFAULT_REFERENCE_DATE = '2026-08-01'
@@ -26,157 +43,132 @@ export function CriticalProductsPage({ stores, categories, onSelectProduct }: Cr
   const [storeId, setStoreId] = useState(stores[0].id)
   const [referenceDate, setReferenceDate] = useState(DEFAULT_REFERENCE_DATE)
   const [limit, setLimit] = useState('')
-  const [products, setProducts] = useState<CriticalProduct[] | null>(null)
-  // Arranca en true: la carga inicial se dispara apenas monta (ver efecto de abajo).
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [appliedFilters, setAppliedFilters] = useState<Filters>({ storeId, referenceDate, limit })
 
-  const applyResult = (result: CriticalProduct[] | null, errorMessage: string | null) => {
-    setProducts(result)
-    setError(errorMessage)
-    setLoading(false)
-  }
-
-  const toApiParams = (filters: Filters) => ({
-    storeId: filters.storeId,
-    referenceDate: filters.referenceDate,
-    limit: filters.limit ? Number(filters.limit) : undefined,
+  const {
+    data: products,
+    error,
+    isFetching,
+  } = useQuery({
+    queryKey: ['criticalProducts', appliedFilters],
+    queryFn: () =>
+      getCriticalProducts({
+        storeId: appliedFilters.storeId,
+        referenceDate: appliedFilters.referenceDate,
+        limit: appliedFilters.limit ? Number(appliedFilters.limit) : undefined,
+      }),
   })
-
-  // Carga inicial. Todo setState ocurre dentro de then/catch (fuera del cuerpo
-  // síncrono del efecto) para no disparar el warning de set-state-in-effect.
-  useEffect(() => {
-    let cancelled = false
-
-    getCriticalProducts(toApiParams({ storeId, referenceDate, limit }))
-      .then((result) => {
-        if (!cancelled) applyResult(result, null)
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          applyResult(null, err instanceof ApiError ? err.message : 'No se pudo conectar con el servidor.')
-        }
-      })
-
-    return () => {
-      cancelled = true
-    }
-    // Solo la carga inicial: búsquedas siguientes las dispara handleSubmit.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
-    setLoading(true)
-    setError(null)
-    getCriticalProducts(toApiParams({ storeId, referenceDate, limit }))
-      .then((result) => applyResult(result, null))
-      .catch((err) => {
-        applyResult(null, err instanceof ApiError ? err.message : 'No se pudo conectar con el servidor.')
-      })
+    setAppliedFilters({ storeId, referenceDate, limit })
   }
 
   return (
-    <main className="page">
-      <header className="page-header">
-        <h1>Productos críticos</h1>
-        <p>Productos que requieren reposición o ya están en quiebre de stock, ordenados por urgencia.</p>
-      </header>
+    <Box component="main" sx={{ p: 4 }}>
+      <Typography variant="h4" component="h1" gutterBottom>
+        Productos críticos
+      </Typography>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+        Productos que requieren reposición o ya están en quiebre de stock, ordenados por urgencia.
+      </Typography>
 
-      <form className="filters" onSubmit={handleSubmit}>
-        <label>
-          Sucursal
-          <select value={storeId} onChange={(event) => setStoreId(Number(event.target.value))}>
-            {stores.map((store) => (
-              <option key={store.id} value={store.id}>
-                {store.name}
-              </option>
-            ))}
-          </select>
-        </label>
+      <Stack
+        component="form"
+        onSubmit={handleSubmit}
+        direction="row"
+        spacing={2}
+        useFlexGap
+        sx={{ flexWrap: 'wrap', alignItems: 'flex-end', mb: 3, p: 2, border: 1, borderColor: 'divider', borderRadius: 1 }}
+      >
+        <TextField select size="small" label="Sucursal" value={storeId} onChange={(event) => setStoreId(Number(event.target.value))}>
+          {stores.map((store) => (
+            <MenuItem key={store.id} value={store.id}>
+              {store.name}
+            </MenuItem>
+          ))}
+        </TextField>
 
-        <label>
-          Fecha de referencia
-          <input
-            type="date"
-            value={referenceDate}
-            onChange={(event) => setReferenceDate(event.target.value)}
-            required
-          />
-        </label>
+        <TextField
+          type="date"
+          size="small"
+          label="Fecha de referencia"
+          value={referenceDate}
+          onChange={(event) => setReferenceDate(event.target.value)}
+          required
+          slotProps={{ inputLabel: { shrink: true } }}
+        />
 
-        <label>
-          Límite de resultados
-          <input
-            type="number"
-            min={1}
-            placeholder="Sin límite"
-            value={limit}
-            onChange={(event) => setLimit(event.target.value)}
-          />
-        </label>
+        <TextField
+          type="number"
+          size="small"
+          label="Límite de resultados"
+          placeholder="Sin límite"
+          value={limit}
+          onChange={(event) => setLimit(event.target.value)}
+          slotProps={{ htmlInput: { min: 1 } }}
+        />
 
-        <button type="submit" disabled={loading}>
-          {loading ? 'Buscando…' : 'Buscar'}
-        </button>
-      </form>
+        <Button type="submit" variant="contained" disabled={isFetching}>
+          {isFetching ? 'Buscando…' : 'Buscar'}
+        </Button>
+      </Stack>
 
       {error && (
-        <p className="state state-error" role="alert">
-          {error}
-        </p>
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {getErrorMessage(error)}
+        </Alert>
       )}
 
-      {!error && !loading && products && products.length === 0 && (
-        <p className="state state-empty">No hay productos críticos para esta sucursal en la fecha seleccionada.</p>
+      {!error && !isFetching && products && products.length === 0 && (
+        <Alert severity="info">No hay productos críticos para esta sucursal en la fecha seleccionada.</Alert>
       )}
 
       {products && products.length > 0 && (
-        <div className="table-scroll">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>SKU</th>
-                <th>Producto</th>
-                <th>Categoría</th>
-                <th>Stock actual</th>
-                <th>Punto de pedido</th>
-                <th>Cobertura (días)</th>
-                <th>Estado</th>
-                <th>Score</th>
-              </tr>
-            </thead>
-            <tbody>
+        <TableContainer component={Paper} variant="outlined">
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>SKU</TableCell>
+                <TableCell>Producto</TableCell>
+                <TableCell>Categoría</TableCell>
+                <TableCell>Stock actual</TableCell>
+                <TableCell>Punto de pedido</TableCell>
+                <TableCell>Cobertura (días)</TableCell>
+                <TableCell>Estado</TableCell>
+                <TableCell>Score</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
               {products.map((product) => (
-                <tr key={product.productId}>
-                  <td>
+                <TableRow key={product.productId}>
+                  <TableCell>
                     {onSelectProduct ? (
-                      <button
-                        type="button"
-                        className="link-button"
-                        onClick={() => onSelectProduct(product.productId, product.storeId)}
-                      >
+                      <Link component="button" type="button" onClick={() => onSelectProduct(product.productId, product.storeId)}>
                         {product.sku}
-                      </button>
+                      </Link>
                     ) : (
                       product.sku
                     )}
-                  </td>
-                  <td>{product.productName}</td>
-                  <td>{categoryLabel(categories, product.categoryId)}</td>
-                  <td>{product.currentStock}</td>
-                  <td>{product.reorderPointUnits.toFixed(1)}</td>
-                  <td>{product.currentDaysOfCoverage.toFixed(1)}</td>
-                  <td>
-                    <span className={statusClassName(product.status)}>{STATUS_LABELS[product.status]}</span>
-                  </td>
-                  <td>{product.criticalityScore.toFixed(0)}</td>
-                </tr>
+                  </TableCell>
+                  <TableCell>{product.productName}</TableCell>
+                  <TableCell>{categoryLabel(categories, product.categoryId)}</TableCell>
+                  <TableCell>{product.currentStock}</TableCell>
+                  <TableCell>{product.reorderPointUnits.toFixed(1)}</TableCell>
+                  <TableCell>{product.currentDaysOfCoverage.toFixed(1)}</TableCell>
+                  <TableCell>
+                    <StatusChip
+                      statusKey={product.status.toLowerCase().replaceAll('_', '-')}
+                      label={STATUS_LABELS[product.status]}
+                    />
+                  </TableCell>
+                  <TableCell>{product.criticalityScore.toFixed(0)}</TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+          </Table>
+        </TableContainer>
       )}
-    </main>
+    </Box>
   )
 }

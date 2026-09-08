@@ -1,4 +1,4 @@
-import { ApiError } from './http'
+import { ApiError, postForm } from './http'
 import type { CsvFileType, IngestionSummary, RowRejection } from './types'
 
 interface ThresholdProblemDetail {
@@ -7,6 +7,10 @@ interface ThresholdProblemDetail {
   rejectedCount?: number
   rejectionRatePercent?: number
   rejections?: RowRejection[]
+}
+
+function isThresholdProblem(details: unknown): details is ThresholdProblemDetail {
+  return typeof details === 'object' && details !== null
 }
 
 /**
@@ -41,12 +45,11 @@ export async function ingestCsvFile(fileType: CsvFileType, file: File): Promise<
   formData.append('fileType', fileType)
   formData.append('file', file)
 
-  const response = await fetch('/api/v1/csv-ingestions', { method: 'POST', body: formData })
-
-  if (!response.ok) {
-    const problem: ThresholdProblemDetail | null = await response.json().catch(() => null)
-
-    if (response.status === 422 && problem) {
+  try {
+    return await postForm<IngestionSummary>('/api/v1/csv-ingestions', formData)
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 422 && isThresholdProblem(err.details)) {
+      const problem = err.details
       throw new CsvIngestionThresholdError(
         problem.detail ?? 'Se superó el umbral de filas rechazadas.',
         problem.totalRowsRead ?? 0,
@@ -55,9 +58,6 @@ export async function ingestCsvFile(fileType: CsvFileType, file: File): Promise<
         problem.rejections ?? [],
       )
     }
-
-    throw new ApiError(problem?.detail ?? `Error ${response.status} al subir el archivo`, response.status)
+    throw err
   }
-
-  return response.json() as Promise<IngestionSummary>
 }
