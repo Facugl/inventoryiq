@@ -30,7 +30,7 @@ flowchart LR
 
 Esta documentación representa la arquitectura actualmente implementada del **backend** de InventoryIQ y sus adaptadores: la capa REST, la Application Layer (Input Ports, Use Cases y Output Ports), el núcleo de Domain, los adaptadores de salida CSV y PostgreSQL, la configuración/wiring de Spring y el job programado.
 
-Queda explícitamente **fuera de alcance** de este documento (que solo cubre backend) el frontend React — que ya no es un scaffold vacío: tiene 8 pantallas funcionando (Inicio, Alertas, Productos Críticos, Sobrestock, Recomendaciones, Detalle de Producto, Clasificación ABC/XYZ, Administración) consumiendo esta misma API, pero su arquitectura interna no se documenta acá.
+Queda explícitamente **fuera de alcance** de este documento (que solo cubre backend) el frontend React — que ya no es un scaffold vacío: tiene 9 pantallas funcionando (Inicio, Alertas, Productos Críticos, Sobrestock, Recomendaciones, Detalle de Producto, Clasificación ABC/XYZ, Proveedores, Administración) consumiendo esta misma API — ver `docs/InventoryIQ_Roadmap.md` (Fase 5) para el detalle de su stack —, pero su arquitectura interna no se documenta acá.
 
 También queda fuera por no tener evidencia de implementación en el repositorio: el proceso ETL (Python + Pandas), el Data Warehouse en modelo estrella, y cualquier otra funcionalidad descrita en `docs/InventoryIQ_Documentacion.md` o `docs/InventoryIQ_Roadmap.md` que aún no exista en código (por ejemplo: ingesta CSV de compras/inventario/productos/proveedores — hoy limitada a `SALES`; catálogo y análisis de proveedores; persistencia de la clasificación ABC/XYZ; configuración de parámetros de categoría vía API).
 

@@ -1,5 +1,8 @@
 # InventoryIQ
 
+[![CI](https://github.com/Facugl/inventoryiq/actions/workflows/ci.yml/badge.svg)](https://github.com/Facugl/inventoryiq/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Herramienta de soporte a la decisión de compras para un supermercado: convierte
 datos de ventas e inventario en recomendaciones de reposición (qué comprar,
 cuándo y en qué cantidad). Ver `docs/InventoryIQ_Documentacion.md` para la
@@ -110,7 +113,7 @@ correctamente, antes de probar las pantallas a mano:
    navegando a mano):
    ```bash
    cd backend && ./mvnw test
-   cd frontend && npm run lint && npm run build
+   cd frontend && pnpm lint && pnpm build
    ```
 
 ## Desarrollo

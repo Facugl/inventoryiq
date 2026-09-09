@@ -11,20 +11,26 @@
 	<groupId>com.inventoryiq</groupId>
 	<artifactId>backend</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name/>
-	<description/>
-	<url/>
+	<name>InventoryIQ Backend</name>
+	<description>API de inventory intelligence: convierte datos de ventas e inventario en recomendaciones de reposición (qué comprar, cuándo y en qué cantidad), con arquitectura hexagonal y dominio testeado de forma aislada.</description>
+	<url>https://github.com/Facugl/inventoryiq</url>
 	<licenses>
-		<license/>
+		<license>
+			<name>MIT License</name>
+			<url>https://opensource.org/licenses/MIT</url>
+		</license>
 	</licenses>
 	<developers>
-		<developer/>
+		<developer>
+			<name>Facundo</name>
+			<email>facundolunaok@gmail.com</email>
+			<url>https://github.com/Facugl</url>
+		</developer>
 	</developers>
 	<scm>
-		<connection/>
-		<developerConnection/>
-		<tag/>
-		<url/>
+		<connection>scm:git:https://github.com/Facugl/inventoryiq.git</connection>
+		<developerConnection>scm:git:https://github.com/Facugl/inventoryiq.git</developerConnection>
+		<url>https://github.com/Facugl/inventoryiq</url>
 	</scm>
 	<properties>
 		<java.version>17</java.version>
