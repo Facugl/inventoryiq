@@ -93,8 +93,7 @@ export function ProductDetailPage({ stores, initialSelection }: ProductDetailPag
         Detalle de producto
       </Typography>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 3, maxWidth: 720 }}>
-        Proyección de demanda por producto. No incluye ficha completa ni histórico de ventas/stock: hoy el backend
-        solo expone la proyección (ver docs/InventoryIQ_Arquitectura.md).
+        Proyección de venta diaria de un producto, período por período, ajustada por estacionalidad.
       </Typography>
 
       <Stack

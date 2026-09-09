@@ -102,9 +102,8 @@ export function SuppliersPage() {
         Proveedores
       </Typography>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 3, maxWidth: 720 }}>
-        Catálogo de proveedores activos. Sin ingesta automática: la coordinación real con proveedores es por
-        WhatsApp, sin ningún sistema del que importar esta información — el lead time se corrige a mano, a medida
-        que se lo conoce mejor en la práctica.
+        Catálogo de proveedores activos, con su lead time y condición de pago. El lead time es editable, ya que
+        se va afinando con la práctica.
       </Typography>
 
       {loadError && <Alert severity="error">{getErrorMessage(loadError)}</Alert>}

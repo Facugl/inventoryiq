@@ -117,8 +117,8 @@ function InventoryCountSection({ stores }: { stores: Store[] }) {
         Conteo de stock
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2, maxWidth: 720 }}>
-        Registrá el conteo físico de un producto antes de pedirle a un proveedor — buscá por código (de barras o
-        interno, por ejemplo "33" para un producto de fiambrería) o por nombre.
+        Registrá el conteo físico de un producto antes de pedirle a un proveedor — buscá por código de barras,
+        código interno o nombre.
       </Typography>
 
       <Stack direction="row" spacing={2} useFlexGap sx={{ flexWrap: 'wrap', alignItems: 'flex-end', mb: 2 }}>
@@ -253,8 +253,8 @@ function CsvIngestionSection() {
         Carga de ventas (CSV)
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2, maxWidth: 720 }}>
-        Único tipo de archivo implementado hoy: <strong>ventas</strong>. Ver docs/InventoryIQ_Arquitectura.md — compras,
-        inventario, productos, proveedores, categorías y sucursales no tienen ingesta vía API todavía.
+        Subí un archivo CSV de <strong>ventas</strong> para incorporarlo al sistema — por ahora es el único tipo
+        de archivo soportado.
       </Typography>
 
       <Stack
@@ -320,9 +320,8 @@ function RecalculateSection({ stores }: { stores: Store[] }) {
         Recalcular estado de productos
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2, maxWidth: 720 }}>
-        Dispara manualmente lo mismo que corre el job programado (diario a las 02:00): productos críticos, sobrestock,
-        recomendaciones y alertas, sucursal por sucursal. No persiste un "estado de producto" nuevo — el único efecto
-        persistido es la actualización de recomendaciones en PostgreSQL.
+        Recalcula productos críticos, sobrestock, alertas y recomendaciones para una sucursal (o todas). Se corre
+        automáticamente todos los días a las 02:00 — usá esto si necesitás actualizarlo antes.
       </Typography>
 
       <Stack
@@ -472,8 +471,8 @@ function CategoryParametersSection() {
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2, maxWidth: 720 }}>
         Umbral de sobrestock: a partir de cuántos días de cobertura un producto de esa categoría se marca en
-        Sobrestock. Stock de seguridad extra: colchón adicional para calcular el punto de pedido. Se aplican de
-        inmediato en cada cálculo, sin reiniciar el backend.
+        Sobrestock. Stock de seguridad extra: colchón adicional para calcular el punto de pedido. Los cambios se
+        aplican de inmediato.
       </Typography>
 
       {loadError && <Alert severity="error">{getErrorMessage(loadError)}</Alert>}
