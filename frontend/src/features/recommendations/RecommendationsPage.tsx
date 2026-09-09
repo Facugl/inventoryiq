@@ -4,6 +4,12 @@ import {
   Alert,
   Box,
   Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  IconButton,
   MenuItem,
   Paper,
   Stack,
@@ -14,13 +20,21 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material'
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import { getRecommendations, recalculateRecommendations, registerRecommendationFeedback } from '../../api/recommendations'
 import { getErrorMessage } from '../../shared/apiError'
 import { showError, showSuccess } from '../../shared/toast'
 import { StatusChip } from '../../shared/StatusChip'
 import type { RecommendationStatus, Store } from '../../api/types'
+
+interface JustificationDialogState {
+  sku: string
+  productName: string
+  justification: string
+}
 
 const STATUS_LABELS: Record<RecommendationStatus, string> = {
   PENDING: 'Pendiente',
@@ -50,6 +64,7 @@ export function RecommendationsPage({ stores }: RecommendationsPageProps) {
   const [storeId, setStoreId] = useState(stores[0].id)
   const [status, setStatus] = useState<RecommendationStatus | ''>('')
   const [appliedFilters, setAppliedFilters] = useState<Filters>({ storeId, status })
+  const [justificationDialog, setJustificationDialog] = useState<JustificationDialogState | null>(null)
 
   const recommendationsQueryKey = ['recommendations', appliedFilters]
 
@@ -160,7 +175,7 @@ export function RecommendationsPage({ stores }: RecommendationsPageProps) {
                 <TableCell>Producto</TableCell>
                 <TableCell>Cantidad sugerida</TableCell>
                 <TableCell>Fecha límite</TableCell>
-                <TableCell sx={{ whiteSpace: 'normal' }}>Justificación</TableCell>
+                <TableCell align="center">Justificación</TableCell>
                 <TableCell>Estado</TableCell>
                 <TableCell align="right">Acciones</TableCell>
               </TableRow>
@@ -172,7 +187,23 @@ export function RecommendationsPage({ stores }: RecommendationsPageProps) {
                   <TableCell sx={{ whiteSpace: 'normal' }}>{rec.productName}</TableCell>
                   <TableCell>{rec.suggestedQuantity}</TableCell>
                   <TableCell>{rec.orderDeadlineDate}</TableCell>
-                  <TableCell sx={{ whiteSpace: 'normal', minWidth: 280 }}>{rec.justification}</TableCell>
+                  <TableCell align="center">
+                    <Tooltip title="Ver justificación">
+                      <IconButton
+                        size="small"
+                        aria-label={`Ver justificación de ${rec.productName}`}
+                        onClick={() =>
+                          setJustificationDialog({
+                            sku: rec.sku,
+                            productName: rec.productName,
+                            justification: rec.justification,
+                          })
+                        }
+                      >
+                        <InfoOutlinedIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </TableCell>
                   <TableCell>
                     <StatusChip statusKey={rec.status.toLowerCase()} label={STATUS_LABELS[rec.status]} />
                   </TableCell>
@@ -208,6 +239,18 @@ export function RecommendationsPage({ stores }: RecommendationsPageProps) {
           </Table>
         </TableContainer>
       )}
+
+      <Dialog open={justificationDialog !== null} onClose={() => setJustificationDialog(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          {justificationDialog?.sku} — {justificationDialog?.productName}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>{justificationDialog?.justification}</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setJustificationDialog(null)}>Cerrar</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }
