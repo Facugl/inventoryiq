@@ -36,6 +36,18 @@ plano. Para ver los logs: `docker compose logs -f backend` (o `frontend`, `postg
 Para bajar todo: `docker compose down` (agregá `-v` si además querés borrar los
 datos de Postgres).
 
+## Pantallas
+
+- **Inicio** — KPIs agregados del período elegido (tasa de quiebre de stock, cobertura promedio, capital inmovilizado en sobrestock, % de recomendaciones seguidas, rotación de inventario).
+- **Alertas** — productos en quiebre de stock o sobrestock que necesitan atención ya, con severidad.
+- **Productos críticos** — productos que cruzaron el punto de pedido, ordenados por score de urgencia. Click en el SKU abre el Detalle de producto.
+- **Sobrestock** — productos con cobertura excesiva y su capital inmovilizado, candidatos a liquidación o promoción.
+- **Recomendaciones** — sugerencias de compra ya calculadas y persistidas, cada una con su justificación (fórmula y datos usados) y botones para marcarla aplicada o descartada.
+- **Detalle de producto** — proyección de venta diaria de un producto puntual, ajustada por estacionalidad.
+- **Clasificación ABC/XYZ** — matriz de prioridad: ABC por contribución al valor de venta, XYZ por variabilidad de demanda.
+- **Proveedores** — catálogo de proveedores activos, con lead time editable y condición de pago.
+- **Administración** — conteo manual de stock, carga de ventas por CSV, disparo manual del recálculo diario, y edición de parámetros de categoría (umbral de sobrestock, stock de seguridad extra).
+
 ## Datos
 
 El sistema arranca con un catálogo **simulado** (`data/csv/*.csv`): productos,
@@ -119,7 +131,7 @@ correctamente, antes de probar las pantallas a mano:
 ## Desarrollo
 
 - **Backend:** Java 17 + Spring Boot, arquitectura hexagonal. Tests: `cd backend && ./mvnw test`.
-- **Frontend:** React + TypeScript + Vite. Lint/build: `cd frontend && npm run lint && npm run build`.
+- **Frontend:** React + TypeScript + Vite + MUI. Lint/build: `cd frontend && pnpm lint && pnpm build`.
 - El frontend, dentro de Docker, usa `VITE_BACKEND_URL` para encontrar al backend
   (ver `docker-compose.yml`) y hot-reload vía polling (necesario en Docker Desktop
   para Windows/Mac — ver `frontend/vite.config.ts`).
