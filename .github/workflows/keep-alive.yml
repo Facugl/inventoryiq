@@ -1,0 +1,22 @@
+name: Keep Render backend awake
+
+# El plan free de Render duerme el servicio tras ~15 min sin tráfico, y el
+# cold-start de este backend (Spring Boot + Flyway + Hibernate) tarda más
+# de 2 minutos. Pinguear /health cada 10 minutos evita que llegue a dormirse.
+#
+# Nota: los cron de GitHub Actions son "best effort" (pueden atrasarse en
+# horas de mucha carga de GitHub) y se desactivan solos si el repo pasa
+# 60 días sin actividad — para algo más confiable, un servicio externo
+# como UptimeRobot (free) es una alternativa/complemento.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping backend health check
+        run: curl -sf https://inventoryiq-backend-x234.onrender.com/health
