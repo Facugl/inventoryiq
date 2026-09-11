@@ -45,7 +45,10 @@ services:
     dockerfilePath: frontend/Dockerfile
     dockerContext: frontend
     envVars:
-      # URL pública de Render, predecible a partir del "name" del servicio
-      # de arriba — si lo renombrás, actualizar acá también.
+      # La URL de Render NO es simplemente "<name>.onrender.com": si ese
+      # nombre corto ya está tomado por otra cuenta, Render le agrega un
+      # sufijo aleatorio a la URL pública real. Confirmar el valor exacto
+      # en el dashboard del servicio inventoryiq-backend antes de asumir
+      # este valor.
       - key: VITE_BACKEND_URL
-        value: https://inventoryiq-backend.onrender.com
+        value: https://inventoryiq-backend-x234.onrender.com
