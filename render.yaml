@@ -1,0 +1,51 @@
+# Blueprint de Render para los 2 servicios de la app (backend + frontend).
+# La base de datos NO es la de Render (su free tier borra la base a los
+# 30 días) — se usa Neon en su lugar (Postgres estándar, free tier pensado
+# para quedar meses sin uso constante sin perder los datos). Ver
+# instrucciones de deploy para cómo conectar Neon acá abajo.
+#
+# Sujeto a la sintaxis vigente del Blueprint spec de Render al momento de
+# desplegar: si algún campo no es reconocido, revisar
+# https://render.com/docs/blueprint-spec y ajustar.
+#
+# Limitación importante del plan free: los web services no tienen disco
+# persistente. Los CSV (data/csv) quedan embebidos en la imagen del backend
+# como dataset de lectura inicial (ver backend/Dockerfile) — cualquier
+# escritura hecha en vivo (conteo de stock, edición de lead time o de
+# parámetros de categoría) se pierde en el próximo reinicio/redeploy. Las
+# recomendaciones sí persisten, porque viven en Postgres (Neon), no en el
+# contenedor.
+
+services:
+  - type: web
+    name: inventoryiq-backend
+    runtime: docker
+    plan: free
+    dockerfilePath: backend/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: SPRING_JPA_HIBERNATE_DDL_AUTO
+        value: none
+      - key: INVENTORYIQ_CSV_BASE_PATH
+        value: /app/data/csv
+      # Completar a mano con los datos del proyecto Neon (ver instrucciones
+      # de deploy) — connection string de Neon, adaptada a URL JDBC.
+      - key: SPRING_DATASOURCE_URL
+        sync: false
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+
+  - type: web
+    name: inventoryiq-frontend
+    runtime: docker
+    plan: free
+    dockerfilePath: frontend/Dockerfile
+    dockerContext: frontend
+    envVars:
+      # URL pública de Render, predecible a partir del "name" del servicio
+      # de arriba — si lo renombrás, actualizar acá también.
+      - key: VITE_BACKEND_URL
+        value: https://inventoryiq-backend.onrender.com

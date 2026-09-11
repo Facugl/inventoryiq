@@ -1,0 +1,8 @@
+.git/
+docs/
+data/real-export/
+backend/target/
+backend/.idea/
+frontend/node_modules/
+frontend/dist/
+*.md
