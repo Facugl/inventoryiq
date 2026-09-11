@@ -21,5 +21,9 @@ export default defineConfig({
       '/health': backendUrl,
     },
     watch: runningInDocker ? { usePolling: true, interval: 300 } : undefined,
+    // Por default Vite solo acepta Host: localhost (protección contra DNS
+    // rebinding) — sin esto, el dev server rechaza cualquier dominio público
+    // como el de Render con "Blocked request".
+    allowedHosts: ['.onrender.com'],
   },
 })
