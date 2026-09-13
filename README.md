@@ -48,6 +48,12 @@ datos de Postgres).
 - **Proveedores** — catálogo de proveedores activos, con lead time editable y condición de pago.
 - **Administración** — conteo manual de stock, carga de ventas por CSV, disparo manual del recálculo diario, y edición de parámetros de categoría (umbral de sobrestock, stock de seguridad extra).
 
+### Capturas
+
+| Inicio | Recomendaciones | Clasificación ABC/XYZ |
+|---|---|---|
+| ![Pantalla de Inicio con KPIs agregados](docs/screenshots/inicio.png) | ![Pantalla de Recomendaciones con justificación](docs/screenshots/recomendaciones.png) | ![Pantalla de Clasificación ABC/XYZ](docs/screenshots/clasificacion-abc-xyz.png) |
+
 ## Datos
 
 El sistema arranca con un catálogo **simulado** (`data/csv/*.csv`): productos,
