@@ -67,7 +67,7 @@ function App() {
 
   if (!stores || !categories) {
     return (
-      <Box sx={{ p: 4 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
         <CircularProgress size={24} />
       </Box>
     )

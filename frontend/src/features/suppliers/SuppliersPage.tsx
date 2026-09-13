@@ -108,7 +108,11 @@ export function SuppliersPage() {
 
       {loadError && <Alert severity="error">{getErrorMessage(loadError)}</Alert>}
 
-      {!loadError && !suppliers && <CircularProgress size={24} />}
+      {!loadError && !suppliers && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+          <CircularProgress size={24} />
+        </Box>
+      )}
 
       {suppliers && suppliers.length === 0 && <Alert severity="info">No hay proveedores activos cargados.</Alert>}
 
