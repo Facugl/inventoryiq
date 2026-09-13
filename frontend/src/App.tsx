@@ -41,14 +41,21 @@ function App() {
   const [screen, setScreen] = useState<ScreenKey>('home')
   const [selection, setSelection] = useState<ProductSelection | null>(null)
 
+  // El backend en Render (free tier) puede estar dormido y tardar más de 2
+  // minutos en responder al primer pedido, pese al ping de UptimeRobot cada
+  // 5 min (no elimina la ventana de sleep, solo la achica): sin retry, ese
+  // primer pedido falla con 502 y la app queda mostrando un
+  // error aunque el backend termine de levantar segundos después. El resto de
+  // las pantallas mantiene retry:false (queryClient.ts) porque cargan detrás
+  // de un botón "Buscar" explícito; esta carga inicial no.
   const {
     data: stores,
     error: storesError,
-  } = useQuery({ queryKey: ['stores'], queryFn: getStores })
+  } = useQuery({ queryKey: ['stores'], queryFn: getStores, retry: 10 })
   const {
     data: categories,
     error: categoriesError,
-  } = useQuery({ queryKey: ['categories'], queryFn: getCategories })
+  } = useQuery({ queryKey: ['categories'], queryFn: getCategories, retry: 10 })
 
   const catalogError = storesError ? getErrorMessage(storesError) : categoriesError ? getErrorMessage(categoriesError) : null
 

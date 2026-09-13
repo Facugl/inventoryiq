@@ -136,6 +136,26 @@ correctamente, antes de probar las pantallas a mano:
   (ver `docker-compose.yml`) y hot-reload vía polling (necesario en Docker Desktop
   para Windows/Mac — ver `frontend/vite.config.ts`).
 
+## Despliegue
+
+El sistema también está desplegado en Render (backend + frontend, ver `render.yaml`)
+con PostgreSQL en Neon en vez del Postgres de Render (su free tier borra la base
+a los 30 días; Neon está pensado para quedar meses sin uso constante sin perderla).
+
+Limitaciones del plan free a tener en cuenta:
+
+- **Sin disco persistente**: los CSV de `data/csv/` quedan embebidos en la imagen
+  del backend en el build (`backend/Dockerfile`) — cualquier escritura hecha en
+  vivo (conteo de stock, edición de lead time, parámetros de categoría) se pierde
+  en el próximo reinicio/redeploy. Las recomendaciones sí persisten, porque viven
+  en Postgres (Neon).
+- **Cold start**: el backend (Spring Boot + Flyway + Hibernate) puede tardar más
+  de 2 minutos en responder si estuvo inactivo. Un monitor de
+  [UptimeRobot](https://uptimerobot.com) le pega a `/health` cada 5 minutos para
+  achicar esa ventana, aunque no la elimina del todo — por eso la carga inicial
+  del frontend (catálogo de sucursales/categorías) reintenta automáticamente en
+  vez de fallar al primer intento (ver `frontend/src/App.tsx`).
+
 ## Documentación
 
 - `docs/InventoryIQ_Documentacion.md` — especificación funcional completa (visión, reglas de negocio, modelo de datos, roadmap evolutivo).
