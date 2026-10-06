@@ -159,6 +159,18 @@ Este último caso es la regla de disparo exacta de la Sección 4.4: `stock actua
 - La validación de `storeId`/`referenceDate` nulos en `GenerateReorderSuggestionsQuery` (→ 400 Bad Request) y el detalle de `RecommendedQuantityCalculator.calculateByTargetCoverage` (Sección 4.5) se documentan aquí en texto en lugar de como nodos propios.
 - El `supplierId` del resultado se propaga tal cual desde `Product.supplierId()`, sin resolverlo contra un `SupplierRepository` (ese puerto no existe en el repositorio).
 
+### 2.4 Limitación conocida: stock no corregido por ventas posteriores al snapshot
+
+`ProductIndicatorsCalculator.calculate` (compartido por `GenerateReorderSuggestionsService`, y transitivamente por `GetCriticalProductsService` y `DetectOverstockService`, que lo invocan con el mismo contrato) toma `currentStock` directamente de `latestSnapshot.get().currentStock()` — el snapshot de inventario vigente más reciente encontrado por `findLatestSnapshotAsOf`, sin ajuste posterior.
+
+Las ventas (`sales`) que el mismo método recibe como parámetro **no se usan para corregir ese valor**: solo alimentan `AdsCalculator.calculateCorrectedAds` a través de `DailySalesRecordAssembler`, es decir, la demanda histórica (Sección 4.9), nunca el stock hacia adelante.
+
+**Efecto concreto:** si el snapshot vigente tiene fecha anterior a `referenceDate` y en ese intervalo se registraron ventas, `currentStock`, `currentDaysOfCoverage` y la regla de disparo de `ReorderPointCalculator.requiresReplenishment` (Sección 4.4) quedan calculados sobre un stock más alto que el real — el sistema puede tardar en marcar un producto como "Requiere Reposición" cuando en los hechos ya cruzó el punto de pedido. El diseño asume implícitamente que el snapshot vigente está razonablemente al día (idealmente del mismo `referenceDate`); no hay ningún cálculo que compense el delta.
+
+No es un defecto de ninguno de los flujos documentados en este archivo — cada uno hace exactamente lo que su diagrama describe. Es un supuesto de diseño en `ProductIndicatorsCalculator` que no estaba explicitado en ningún documento del proyecto hasta ahora.
+
+**Mitigación posible (PROPUESTO, no implementada):** restar de `currentStock` la suma de `unidades_vendidas` de las ventas con fecha entre `snapshotDate` (exclusive) y `referenceDate` (inclusive) antes de pasarlo a `ReorderPointCalculator`/`OverstockDetector`. Esto acotaría el problema sin cambiar el contrato de `InventoryRepository` ni requerir un snapshot diario.
+
 ---
 
 ## 3. Flujo: Recálculo de estado de productos
@@ -336,6 +348,7 @@ flowchart TD
 - `stockInTransit` siempre se registra en `0`: un conteo físico releva lo que hay parado en el depósito/góndola, no "lo que está en camino" de un proveedor — `RecordInventoryCountCommand` ni siquiera recibe ese dato como parámetro.
 - Mismo criterio de integridad referencial que `IngestCsvFileService` usa para ventas (verificar que `producto_id`/`sucursal_id` existan), pero acá cada chequeo fallido corta la ejecución con un 404 en vez de acumularse como un rechazo de fila — es un registro puntual, no un lote.
 - `GET /api/v1/products?q=...` (`SearchProductsUseCase`) no tiene un flujo dedicado en este documento: es un filtro en memoria de una sola pasada sobre `ProductRepository.findAllActive()` (por código en `Product.sku` o por nombre, sin distinguir mayúsculas), sin ramas ni casos de descarte que justifiquen un diagrama propio. Lo usa la pantalla de conteo de stock del frontend para resolver un producto por código de barras, código interno corto, o nombre, sin que quien carga el dato tenga que conocer el `productId` numérico.
+- El snapshot que este flujo persiste es exactamente el que `ProductIndicatorsCalculator` va a leer después como `latestSnapshot` — ver Sección 2.4 para la limitación conocida de que ese valor no se corrige por ventas posteriores a su fecha.
 
 ---
 
