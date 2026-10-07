@@ -1,5 +1,6 @@
 package com.inventoryiq.adapters.in.rest;
 
+import com.inventoryiq.adapters.in.csv.InventoryCsvRowParser;
 import com.inventoryiq.adapters.in.csv.SalesCsvRowParser;
 import com.inventoryiq.adapters.in.rest.dto.IngestionSummaryResponse;
 import com.inventoryiq.adapters.in.rest.mapper.IngestionSummaryResponseMapper;
@@ -19,6 +20,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 /**
  * Adaptador de entrada REST para IngestCsvFileUseCase (Sección 8.13).
@@ -27,10 +29,16 @@ import java.nio.charset.StandardCharsets;
  *
  * fileType se recibe directamente como CsvFileType: Spring convierte el
  * valor del form field al nombre de la constante del enum, y si no
- * matchea (cualquier valor que no sea SALES, el único implementado en
- * este slice) dispara MethodArgumentTypeMismatchException — 400, sin
+ * matchea (cualquier valor que no sea SALES o INVENTORY, los dos
+ * implementados) dispara MethodArgumentTypeMismatchException — 400, sin
  * agregar un handler de error nuevo, mismo mecanismo que sortBy en
  * OverstockController.
+ *
+ * El enum sí decide qué parser del adaptador se usa: cada tipo de
+ * archivo tiene columnas propias, así que la conversión CSV -> filas
+ * candidatas no puede ser única. Lo que viene después (validación
+ * referencial, duplicados, umbral, persistencia) ya es responsabilidad
+ * del use case, igual para los dos tipos.
  */
 @RestController
 @RequestMapping("/api/v1/csv-ingestions")
@@ -46,20 +54,32 @@ public class CsvIngestionController {
 
 	@PostMapping
 	@Operation(summary = "Ingerir un archivo CSV",
-			description = "Único fileType implementado: SALES. Todo-o-nada por lote: si el porcentaje de filas "
+			description = "fileType implementados: SALES e INVENTORY. Todo-o-nada por lote: si el porcentaje de filas "
 					+ "rechazadas supera el umbral configurado, no se persiste ninguna fila (422).")
 	public IngestionSummaryResponse ingest(
 			@RequestParam CsvFileType fileType,
 			@RequestParam("file") MultipartFile file) throws IOException {
 
-		SalesCsvRowParser.ParsedBatch batch;
+		IngestCsvFileCommand command;
 		try (Reader reader = new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8)) {
-			batch = SalesCsvRowParser.parse(reader);
+			command = toCommand(fileType, reader);
 		}
 
-		IngestCsvFileCommand command = new IngestCsvFileCommand(
-				fileType, batch.totalRowsRead(), batch.candidateRows(), batch.preValidationRejections());
-
 		return IngestionSummaryResponseMapper.INSTANCE.toResponse(ingestCsvFileUseCase.execute(command));
+	}
+
+	private static IngestCsvFileCommand toCommand(CsvFileType fileType, Reader reader) {
+		return switch (fileType) {
+			case SALES -> {
+				SalesCsvRowParser.ParsedBatch batch = SalesCsvRowParser.parse(reader);
+				yield new IngestCsvFileCommand(
+						fileType, batch.totalRowsRead(), batch.candidateRows(), batch.preValidationRejections());
+			}
+			case INVENTORY -> {
+				InventoryCsvRowParser.ParsedBatch batch = InventoryCsvRowParser.parse(reader);
+				yield new IngestCsvFileCommand(
+						fileType, batch.totalRowsRead(), List.of(), batch.candidateRows(), batch.preValidationRejections());
+			}
+		};
 	}
 }

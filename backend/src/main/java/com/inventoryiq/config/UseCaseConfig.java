@@ -151,8 +151,12 @@ public class UseCaseConfig {
 
 	@Bean
 	public IngestCsvFileUseCase ingestCsvFileUseCase(
-			ProductRepository productRepository, StoreRepository storeRepository, SaleIngestionRepository saleIngestionRepository) {
-		return new IngestCsvFileService(productRepository, storeRepository, saleIngestionRepository);
+			ProductRepository productRepository,
+			StoreRepository storeRepository,
+			SaleIngestionRepository saleIngestionRepository,
+			InventoryIngestionRepository inventoryIngestionRepository) {
+		return new IngestCsvFileService(
+				productRepository, storeRepository, saleIngestionRepository, inventoryIngestionRepository);
 	}
 
 	@Bean

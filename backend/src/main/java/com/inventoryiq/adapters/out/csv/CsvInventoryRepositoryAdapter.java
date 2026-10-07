@@ -26,8 +26,9 @@ import java.util.stream.Collectors;
  * Adaptador de salida — lee inventario.csv (Sección 5.7), indexado por
  * producto+sucursal. Además implementa InventoryIngestionRepository:
  * save() agrega un nuevo snapshot al final del archivo en disco y al
- * índice en memoria de este mismo objeto, así un conteo manual queda
- * visible al resto de las consultas sin reiniciar la aplicación — mismo
+ * índice en memoria de este mismo objeto, así un conteo manual (o una
+ * fila de un CSV de inventario ingerido) queda visible al resto de las
+ * consultas sin reiniciar la aplicación — mismo
  * criterio que CsvSaleRepositoryAdapter con SaleRepository/
  * SaleIngestionRepository. Ambos puertos deben resolver a esta misma
  * instancia (ver config/CsvAdaptersConfig).
@@ -67,6 +68,12 @@ public class CsvInventoryRepositoryAdapter implements InventoryRepository, Inven
 		return snapshots.stream()
 				.filter(snapshot -> !snapshot.snapshotDate().isBefore(from) && !snapshot.snapshotDate().isAfter(to))
 				.toList();
+	}
+
+	@Override
+	public synchronized boolean existsByProductStoreAndSnapshotDate(Long productId, Long storeId, LocalDate snapshotDate) {
+		List<Inventory> snapshots = snapshotsByProductAndStore.getOrDefault(new ProductStoreKey(productId, storeId), List.of());
+		return snapshots.stream().anyMatch(snapshot -> snapshot.snapshotDate().equals(snapshotDate));
 	}
 
 	@Override

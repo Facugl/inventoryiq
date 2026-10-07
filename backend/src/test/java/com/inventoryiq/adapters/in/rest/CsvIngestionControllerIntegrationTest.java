@@ -36,7 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * integración verifica a mano contra números fijos).
  *
  * Excluye Hibernate/JPA-repositories/Flyway (no hace falta Postgres para
- * probar ingesta de ventas) pero NO excluye el datasource: cae al H2
+ * probar ingesta de ventas ni de inventario) pero NO excluye el datasource: cae al H2
  * embebido automático, sin necesitar Docker.
  */
 @SpringBootTest
@@ -103,6 +103,39 @@ class CsvIngestionControllerIntegrationTest {
 				.andExpect(jsonPath("$.totalRowsRead").value(41))
 				.andExpect(jsonPath("$.acceptedCount").value(39))
 				.andExpect(jsonPath("$.rejectedCount").value(2));
+	}
+
+	@Test
+	void ingestsAValidInventorySnapshotAndPersistsItThroughTheRealWiring() throws Exception {
+		String csv = "fecha_snapshot,producto_id,sucursal_id,stock_actual,stock_en_transito\n"
+				+ "2025-07-20,1001,1,123,0\n";
+		MockMultipartFile file = new MockMultipartFile("file", "inventario.csv", "text/csv", csv.getBytes(StandardCharsets.UTF_8));
+
+		mockMvc.perform(multipart("/api/v1/csv-ingestions").file(file).param("fileType", "INVENTORY"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.totalRowsRead").value(1))
+				.andExpect(jsonPath("$.acceptedCount").value(1))
+				.andExpect(jsonPath("$.rejectedCount").value(0));
+
+		// el inventario_id lo asigna el adaptador, no el archivo subido: se verifica el resto de la fila.
+		String persisted = Files.readString(tempCsvDir.resolve("inventario.csv"));
+		assertTrue(persisted.lines().anyMatch(line -> line.endsWith("2025-07-20,1001,1,123,0")));
+	}
+
+	@Test
+	void returns422ForAnInventoryRowThatDuplicatesAnAlreadyPersistedSnapshot() throws Exception {
+		// 1001/sucursal 1 el 2025-07-03 ya está en el fixture -> 100% de rechazo -> supera el umbral.
+		String csv = "fecha_snapshot,producto_id,sucursal_id,stock_actual,stock_en_transito\n"
+				+ "2025-07-03,1001,1,999,0\n";
+		MockMultipartFile file = new MockMultipartFile("file", "inventario.csv", "text/csv", csv.getBytes(StandardCharsets.UTF_8));
+
+		mockMvc.perform(multipart("/api/v1/csv-ingestions").file(file).param("fileType", "INVENTORY"))
+				.andExpect(status().isUnprocessableContent())
+				.andExpect(jsonPath("$.status").value(422))
+				.andExpect(jsonPath("$.rejectedCount").value(1));
+
+		String persisted = Files.readString(tempCsvDir.resolve("inventario.csv"));
+		assertTrue(persisted.lines().noneMatch(line -> line.endsWith("2025-07-03,1001,1,999,0")));
 	}
 
 	@Test

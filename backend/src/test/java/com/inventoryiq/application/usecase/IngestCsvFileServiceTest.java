@@ -5,10 +5,12 @@ import com.inventoryiq.application.port.in.CsvFileType;
 import com.inventoryiq.application.port.in.IngestCsvFileCommand;
 import com.inventoryiq.application.port.in.IngestCsvFileResult;
 import com.inventoryiq.application.port.in.RowRejection;
+import com.inventoryiq.application.port.out.InventoryIngestionRepository;
 import com.inventoryiq.application.port.out.ProductRepository;
 import com.inventoryiq.application.port.out.SaleIngestionRepository;
 import com.inventoryiq.application.port.out.StoreRepository;
 import com.inventoryiq.domain.exception.CsvIngestionThresholdExceededException;
+import com.inventoryiq.domain.model.Inventory;
 import com.inventoryiq.domain.model.Product;
 import com.inventoryiq.domain.model.Sale;
 import com.inventoryiq.domain.model.Store;
@@ -196,7 +198,21 @@ class IngestCsvFileServiceTest {
 
 	private static IngestCsvFileService service(
 			FakeProductRepository products, FakeStoreRepository stores, FakeSaleIngestionRepository sales) {
-		return new IngestCsvFileService(products, stores, sales);
+		return new IngestCsvFileService(products, stores, sales, new UnusedInventoryIngestionRepository());
+	}
+
+	/** El camino SALES no debe tocar el puerto de inventario: cualquier uso rompe el test. */
+	private static class UnusedInventoryIngestionRepository implements InventoryIngestionRepository {
+
+		@Override
+		public boolean existsByProductStoreAndSnapshotDate(Long productId, Long storeId, LocalDate snapshotDate) {
+			throw new AssertionError("El camino SALES no debería consultar InventoryIngestionRepository");
+		}
+
+		@Override
+		public Inventory save(LocalDate snapshotDate, Long productId, Long storeId, int currentStock, int stockInTransit) {
+			throw new AssertionError("El camino SALES no debería persistir snapshots de inventario");
+		}
 	}
 
 	/** La fila problemática (row 1) más 19 filas válidas del OTHER_PRODUCT_ID, para mantener el rechazo bajo el umbral. */

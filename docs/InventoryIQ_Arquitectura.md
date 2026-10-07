@@ -42,7 +42,7 @@ Todo componente listado en las tablas siguientes es **IMPLEMENTADO**, verificado
 |---|---|---|
 | `AlertsController` | `GET /api/v1/alerts` | `GenerateAlertsUseCase` |
 | `CriticalProductsController` | `GET /api/v1/products/critical` | `GetCriticalProductsUseCase` |
-| `CsvIngestionController` | `POST /api/v1/csv-ingestions` (multipart, vía `SalesCsvRowParser`) | `IngestCsvFileUseCase` |
+| `CsvIngestionController` | `POST /api/v1/csv-ingestions` (multipart, vía `SalesCsvRowParser` o `InventoryCsvRowParser` según `fileType`) | `IngestCsvFileUseCase` |
 | `ForecastController` | `GET /api/v1/products/{productId}/forecast` | `ForecastDemandUseCase` |
 | `HealthController` | `GET /health` | — (no invoca casos de uso) |
 | `KPIsController` | `GET /api/v1/kpis` | `CalculateInventoryKPIsUseCase` |
@@ -74,7 +74,7 @@ Todo componente listado en las tablas siguientes es **IMPLEMENTADO**, verificado
 | `RecalculateRecommendationsUseCase` | Recommendation | — | `GenerateReorderSuggestionsUseCase` |
 | `RegisterRecommendationFeedbackUseCase` | Recommendation, Product | — | — |
 | `CalculateInventoryKPIsUseCase` | Product, Category, Sale, Inventory, Recommendation | `InventoryTurnoverCalculator`, `ProductIndicatorsCalculator` | `DetectOverstockUseCase` |
-| `IngestCsvFileUseCase` | Product, Store, SaleIngestion | — | — |
+| `IngestCsvFileUseCase` | Product, Store, SaleIngestion, InventoryIngestion | — | — |
 | `RecalculateProductStatusUseCase` | Store | — | `GetCriticalProductsUseCase`, `DetectOverstockUseCase`, `RecalculateRecommendationsUseCase`, `GenerateAlertsUseCase` |
 | `ListStoresUseCase` | Store | — | — |
 | `ListCategoriesUseCase` | Category | — | — |
@@ -229,24 +229,27 @@ flowchart TD
 
 ---
 
-## 4. Flujo: Ingesta de archivos CSV (ventas)
+## 4. Flujo: Ingesta de archivos CSV (ventas e inventario)
 
-Flujo del caso de uso `IngestCsvFileUseCase` (impl: `IngestCsvFileService`). Hoy solo existe implementación para `CsvFileType.SALES` — es el único valor del enum; ingerir compras, inventario, productos, proveedores, categorías o sucursales está fuera de alcance de este flujo.
+Flujo del caso de uso `IngestCsvFileUseCase` (impl: `IngestCsvFileService`). Hay implementación para los dos valores del enum `CsvFileType`: `SALES` e `INVENTORY`. Ingerir compras, productos, proveedores, categorías o sucursales sigue estando fuera de alcance de este flujo.
+
+Los dos tipos comparten toda la orquestación —integridad referencial, detección de duplicados, umbral crítico de rechazo y corte todo-o-nada— y se diferencian solo en el parser del adaptador (cada archivo tiene sus propias columnas), el tipo de dominio que producen (`Sale` / `Inventory`) y el puerto por el que se persisten.
 
 ```mermaid
 flowchart TD
     CLI["Cliente / API REST"]
     CTRL["CsvIngestionController<br/>POST /api/v1/csv-ingestions<br/>(fileType, file multipart)"]
-    TYPE_CHECK{"¿fileType == SALES?"}
+    TYPE_CHECK{"¿fileType reconocido?"}
     BADTYPE["400 Bad Request<br/>(MethodArgumentTypeMismatchException,<br/>mecanismo de Spring, sin handler propio)"]
-    PARSE["SalesCsvRowParser.parse<br/>valida columnas esperadas y tipos por fila"]
+    PARSE_S["SalesCsvRowParser.parse<br/>columnas de ventas + tipos por fila"]
+    PARSE_I["InventoryCsvRowParser.parse<br/>columnas de inventario + tipos por fila"]
     BATCH["ParsedBatch<br/>(candidateRows, preValidationRejections)"]
     UC["IngestCsvFileUseCase"]
 
     subgraph LOOP["Por cada fila candidata"]
         direction TB
         REF{"¿producto_id y sucursal_id<br/>existen en el catálogo?"}
-        DUP{"¿venta duplicada?<br/>(ya persistida, o repetida<br/>dentro del mismo archivo)"}
+        DUP{"¿fila duplicada?<br/>(ya persistida, o repetida<br/>dentro del mismo archivo)"}
         ACCEPT["Fila aceptada"]
         REJECT["Fila rechazada (con motivo)"]
 
@@ -259,24 +262,33 @@ flowchart TD
     RATE["Calcula % de rechazo<br/>sobre totalRowsRead"]
     THRESH{"¿% rechazo > 5%?<br/>(umbral crítico, Sección 7.4)"}
     ABORT["CsvIngestionThresholdExceededException<br/>→ 422 Unprocessable Content<br/>Nada se persiste"]
-    SAVE["Persiste cada fila aceptada<br/>vía SaleIngestionRepository"]
+    SAVE_S["Persiste cada venta aceptada<br/>vía SaleIngestionRepository"]
+    SAVE_I["Persiste cada snapshot aceptado<br/>vía InventoryIngestionRepository<br/>(el inventario_id lo asigna el adaptador)"]
     RESULT["IngestCsvFileResult<br/>(totalRowsRead, acceptedCount,<br/>rejectedCount, rejections)"]
     RESP["JSON, 200 OK"]
 
-    CSVA["CsvSaleRepositoryAdapter"]
-    CSVFILE[("ventas.csv")]
+    CSVA_S["CsvSaleRepositoryAdapter"]
+    CSVA_I["CsvInventoryRepositoryAdapter"]
+    CSVFILE_S[("ventas.csv")]
+    CSVFILE_I[("inventario.csv")]
 
     CLI --> CTRL --> TYPE_CHECK
     TYPE_CHECK -->|"no"| BADTYPE
-    TYPE_CHECK -->|"sí"| PARSE --> BATCH --> UC --> REF
+    TYPE_CHECK -->|"SALES"| PARSE_S --> BATCH
+    TYPE_CHECK -->|"INVENTORY"| PARSE_I --> BATCH
+    BATCH --> UC --> REF
     ACCEPT --> RATE
     REJECT --> RATE
     RATE --> THRESH
     THRESH -->|"sí"| ABORT
-    THRESH -->|"no"| SAVE --> RESULT --> RESP --> CLI
+    THRESH -->|"no, SALES"| SAVE_S --> RESULT
+    THRESH -->|"no, INVENTORY"| SAVE_I --> RESULT
+    RESULT --> RESP --> CLI
 
-    SAVE -.->|"responde vía"| CSVA
-    CSVA --> CSVFILE
+    SAVE_S -.->|"responde vía"| CSVA_S
+    SAVE_I -.->|"responde vía"| CSVA_I
+    CSVA_S --> CSVFILE_S
+    CSVA_I --> CSVFILE_I
 
     classDef entrada fill:#dbeafe,stroke:#2563eb,color:#1e3a8a;
     classDef aplicacion fill:#fef9c3,stroke:#ca8a04,color:#713f12;
@@ -285,18 +297,22 @@ flowchart TD
     classDef infra fill:#f1f5f9,stroke:#64748b,color:#0f172a;
 
     class CLI,CTRL,BADTYPE,RESP entrada;
-    class TYPE_CHECK,PARSE,BATCH,UC,REF,DUP,ACCEPT,REJECT,RATE,RESULT aplicacion;
-    class THRESH,ABORT,SAVE dominio;
-    class CSVA salida;
-    class CSVFILE infra;
+    class TYPE_CHECK,PARSE_S,PARSE_I,BATCH,UC,REF,DUP,ACCEPT,REJECT,RATE,RESULT aplicacion;
+    class THRESH,ABORT,SAVE_S,SAVE_I dominio;
+    class CSVA_S,CSVA_I salida;
+    class CSVFILE_S,CSVFILE_I infra;
 ```
 
 ### 4.1 Notas sobre el detalle omitido
 
-- **`PARSE`** vive en `adapters/in/csv`, no en `application/`: valida estructura y tipos por fila (columnas esperadas, parseo de fecha/decimal/entero) apoyándose en el constructor de `Sale`, que ya verifica invariantes como `unidades_vendidas >= 0`. La integridad referencial y los duplicados quedan para la capa de aplicación, que sí tiene los puertos para resolverlos — de ahí la separación entre `PARSE` (fuera del use case) y `LOOP` (dentro).
-- **`DUP`** colapsa dos chequeos independientes: `saleIngestionRepository.existsByProductStoreAndDate` (contra lo ya persistido) y una detección en memoria de duplicados dentro del mismo archivo subido (`seenInThisBatch`) — necesaria porque nada se persiste hasta el final de la corrida.
-- El umbral del 5% se toma literalmente del ejemplo de la Sección 7.4 de `InventoryIQ_Documentacion.md`; no hay otro valor sugerido en la documentación, y es una constante fija en `IngestCsvFileService` (`REJECTION_THRESHOLD_PERCENT`), no configurable.
+- **`PARSE_S` / `PARSE_I`** viven en `adapters/in/csv`, no en `application/`: validan estructura y tipos por fila (columnas esperadas, parseo de fecha/decimal/entero) apoyándose en el constructor del tipo de dominio, que ya verifica invariantes como `unidades_vendidas >= 0` en `Sale` o `stock_actual >= 0` en `Inventory`. La integridad referencial y los duplicados quedan para la capa de aplicación, que sí tiene los puertos para resolverlos — de ahí la separación entre `PARSE` (fuera del use case) y `LOOP` (dentro).
+- **Columnas esperadas.** Ventas: `venta_id, fecha, producto_id, sucursal_id, unidades_vendidas, importe_total`. Inventario: `fecha_snapshot, producto_id, sucursal_id, stock_actual, stock_en_transito`. El chequeo de header es `containsAll`, no igualdad exacta: un archivo con columnas de más se acepta y esas columnas se ignoran.
+- **El `inventario_id` no se toma del archivo**, a diferencia del `venta_id` de una venta. Lo asigna `CsvInventoryRepositoryAdapter` dentro de `save()`, igual que para un conteo manual (Sección 5.1) — por eso `InventoryCsvRowParser` ni siquiera exige esa columna, y si el archivo subido la trae (por ejemplo, porque es un export de `inventario.csv`) se ignora.
+- **`DUP`** colapsa dos chequeos independientes: contra lo ya persistido (`saleIngestionRepository.existsByProductStoreAndDate` / `inventoryIngestionRepository.existsByProductStoreAndSnapshotDate`) y una detección en memoria de duplicados dentro del mismo archivo subido (`seenInThisBatch`) — necesaria porque nada se persiste hasta el final de la corrida. La clave de duplicado es la misma en los dos casos: producto + sucursal + fecha.
+- El umbral del 5% se toma literalmente del ejemplo de la Sección 7.4 de `InventoryIQ_Documentacion.md`; no hay otro valor sugerido en la documentación, y es una constante fija en `IngestCsvFileService` (`REJECTION_THRESHOLD_PERCENT`), no configurable. Es la misma constante para los dos tipos de archivo.
 - Si se supera el umbral, la excepción se lanza **antes** del bloque de persistencia: es todo o nada por corrida, no hay persistencia parcial de las filas aceptadas hasta ese punto.
+- `IngestCsvFileCommand` lleva las filas ya parseadas en dos listas tipadas (`candidateRows` para ventas, `inventoryCandidateRows` para inventario) y el use case consume solo la que corresponde al `fileType`. Son bucles separados y no uno genérico porque recorren tipos de dominio distintos y escriben por puertos distintos; lo único que comparten —el cálculo del porcentaje y el corte todo-o-nada— está extraído en `checkRejectionThreshold`.
+- Un snapshot ingerido por este flujo entra al mismo `inventario.csv` que lee el resto del sistema, así que queda visible para `ProductIndicatorsCalculator` como cualquier otro — con la misma limitación conocida de la Sección 2.4 (el valor no se corrige por ventas posteriores a su fecha).
 
 ---
 
@@ -344,9 +360,9 @@ flowchart TD
 
 ### 5.1 Notas sobre el detalle omitido
 
-- `inventoryId` no lo elige quien llama: a diferencia de una venta ingerida vía CSV (que trae su propio `venta_id` en la fila), un conteo manual no tiene un id externo — lo genera `CsvInventoryRepositoryAdapter` (máximo id existente + contador en memoria) dentro de `save()`.
+- `inventoryId` no lo elige quien llama: a diferencia de una venta ingerida vía CSV (que trae su propio `venta_id` en la fila), un conteo manual no tiene un id externo — lo genera `CsvInventoryRepositoryAdapter` (máximo id existente + contador en memoria) dentro de `save()`. Vale lo mismo para una fila de un CSV de inventario ingerido por el flujo de la Sección 4, que comparte este puerto.
 - `stockInTransit` siempre se registra en `0`: un conteo físico releva lo que hay parado en el depósito/góndola, no "lo que está en camino" de un proveedor — `RecordInventoryCountCommand` ni siquiera recibe ese dato como parámetro.
-- Mismo criterio de integridad referencial que `IngestCsvFileService` usa para ventas (verificar que `producto_id`/`sucursal_id` existan), pero acá cada chequeo fallido corta la ejecución con un 404 en vez de acumularse como un rechazo de fila — es un registro puntual, no un lote.
+- Mismo criterio de integridad referencial que `IngestCsvFileService` usa para ventas e inventario (verificar que `producto_id`/`sucursal_id` existan), pero acá cada chequeo fallido corta la ejecución con un 404 en vez de acumularse como un rechazo de fila — es un registro puntual, no un lote.
 - `GET /api/v1/products?q=...` (`SearchProductsUseCase`) no tiene un flujo dedicado en este documento: es un filtro en memoria de una sola pasada sobre `ProductRepository.findAllActive()` (por código en `Product.sku` o por nombre, sin distinguir mayúsculas), sin ramas ni casos de descarte que justifiquen un diagrama propio. Lo usa la pantalla de conteo de stock del frontend para resolver un producto por código de barras, código interno corto, o nombre, sin que quien carga el dato tenga que conocer el `productId` numérico.
 - El snapshot que este flujo persiste es exactamente el que `ProductIndicatorsCalculator` va a leer después como `latestSnapshot` — ver Sección 2.4 para la limitación conocida de que ese valor no se corrige por ventas posteriores a su fecha.
 

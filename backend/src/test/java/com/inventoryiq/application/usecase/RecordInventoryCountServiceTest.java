@@ -115,6 +115,12 @@ class RecordInventoryCountServiceTest {
 		private final AtomicLong nextId = new AtomicLong(1);
 
 		@Override
+		public boolean existsByProductStoreAndSnapshotDate(Long productId, Long storeId, LocalDate snapshotDate) {
+			return saved.stream().anyMatch(snapshot -> snapshot.productId().equals(productId)
+					&& snapshot.storeId().equals(storeId) && snapshot.snapshotDate().equals(snapshotDate));
+		}
+
+		@Override
 		public Inventory save(LocalDate snapshotDate, Long productId, Long storeId, int currentStock, int stockInTransit) {
 			Inventory snapshot = new Inventory(nextId.getAndIncrement(), snapshotDate, productId, storeId, currentStock, stockInTransit);
 			saved.add(snapshot);
