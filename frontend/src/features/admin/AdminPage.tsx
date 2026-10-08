@@ -28,7 +28,7 @@ import { searchProducts } from '../../api/products'
 import { getCategories, updateCategoryParameters } from '../../api/categories'
 import { getErrorMessage } from '../../shared/apiError'
 import { showSuccess } from '../../shared/toast'
-import type { Category, InventorySnapshot, ProductSummary, RowRejection, Store } from '../../api/types'
+import type { Category, CsvFileType, InventorySnapshot, ProductSummary, RowRejection, Store } from '../../api/types'
 import { inventoryCountSchema, type InventoryCountFormValues } from './validation/inventoryCountSchema'
 import { categoryParametersSchema, type CategoryParametersFormValues } from './validation/categoryParametersSchema'
 
@@ -225,14 +225,51 @@ function InventoryCountSection({ stores }: { stores: Store[] }) {
   )
 }
 
+/**
+ * Cada tipo de archivo tiene sus propias columnas esperadas: el backend
+ * rechaza el lote entero con un 400 si no están todas, así que conviene
+ * mostrarlas antes de subir en vez de que el error llegue después.
+ */
+const CSV_FILE_TYPES: { value: CsvFileType; label: string; fileName: string; columns: string; hint?: string }[] = [
+  {
+    value: 'SALES',
+    label: 'Ventas',
+    fileName: 'ventas.csv',
+    columns: 'venta_id, fecha, producto_id, sucursal_id, unidades_vendidas, importe_total',
+  },
+  {
+    value: 'INVENTORY',
+    label: 'Inventario',
+    fileName: 'inventario.csv',
+    columns: 'fecha_snapshot, producto_id, sucursal_id, stock_actual, stock_en_transito',
+    hint: 'el inventario_id lo asigna el sistema, así que si el archivo trae esa columna se ignora.',
+  },
+]
+
 function CsvIngestionSection() {
+  const [fileType, setFileType] = useState<CsvFileType>('SALES')
   const [file, setFile] = useState<File | null>(null)
   const [fileError, setFileError] = useState<string | null>(null)
 
   const mutation = useMutation({
-    mutationFn: (selectedFile: File) => ingestCsvFile('SALES', selectedFile),
+    mutationFn: (selectedFile: File) => ingestCsvFile(fileType, selectedFile),
     onSuccess: (summary) => showSuccess(`${summary.acceptedCount} de ${summary.totalRowsRead} filas aceptadas.`),
   })
+
+  const selected = CSV_FILE_TYPES.find((option) => option.value === fileType) ?? CSV_FILE_TYPES[0]
+
+  /**
+   * Cambiar de tipo descarta el archivo elegido y el resultado del lote
+   * anterior: las columnas esperadas son otras, y dejar a la vista el
+   * resumen de una carga de ventas sobre un formulario de inventario
+   * confunde más de lo que ayuda.
+   */
+  const handleFileTypeChange = (value: CsvFileType) => {
+    setFileType(value)
+    setFile(null)
+    setFileError(null)
+    mutation.reset()
+  }
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
@@ -250,11 +287,15 @@ function CsvIngestionSection() {
   return (
     <Box component="section" sx={{ mb: 4 }}>
       <Typography variant="h5" component="h2" gutterBottom>
-        Carga de ventas (CSV)
+        Carga de archivos (CSV)
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2, maxWidth: 720 }}>
-        Subí un archivo CSV de <strong>ventas</strong> para incorporarlo al sistema — por ahora es el único tipo
-        de archivo soportado.
+        Subí un archivo CSV de <strong>ventas</strong> o de <strong>inventario</strong> para incorporarlo al
+        sistema. Columnas esperadas:{' '}
+        <Box component="span" sx={{ fontFamily: 'monospace' }}>
+          {selected.columns}
+        </Box>
+        {selected.hint ? ` — ${selected.hint}` : ''}
       </Typography>
 
       <Stack
@@ -265,8 +306,23 @@ function CsvIngestionSection() {
         useFlexGap
         sx={{ flexWrap: 'wrap', alignItems: 'center', mb: 2 }}
       >
+        <TextField
+          select
+          size="small"
+          label="Tipo de archivo"
+          value={fileType}
+          onChange={(event) => handleFileTypeChange(event.target.value as CsvFileType)}
+          sx={{ minWidth: 200 }}
+        >
+          {CSV_FILE_TYPES.map((option) => (
+            <MenuItem key={option.value} value={option.value}>
+              {option.label}
+            </MenuItem>
+          ))}
+        </TextField>
+
         <Button component="label" variant="outlined">
-          {file ? file.name : 'Elegir archivo (ventas.csv)'}
+          {file ? file.name : `Elegir archivo (${selected.fileName})`}
           <input type="file" accept=".csv" hidden onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
         </Button>
 

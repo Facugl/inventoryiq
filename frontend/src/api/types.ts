@@ -89,8 +89,8 @@ export interface ProductForecast {
   periods: DemandForecastPeriod[]
 }
 
-/** Backend: application.port.in.CsvFileType. Único valor implementado: SALES. */
-export type CsvFileType = 'SALES'
+/** Backend: application.port.in.CsvFileType. Valores implementados: SALES e INVENTORY. */
+export type CsvFileType = 'SALES' | 'INVENTORY'
 
 /** Forma de RowRejectionResponse (fila rechazada de una ingesta CSV). */
 export interface RowRejection {
