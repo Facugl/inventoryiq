@@ -3,18 +3,30 @@ import axios, { type AxiosError } from 'axios'
 /** Los errores del backend llegan como ProblemDetail (RFC 7807, ver GlobalExceptionHandler). */
 interface ProblemDetail {
   detail?: string
+  code?: string
+  resourceId?: unknown
 }
 
 export class ApiError extends Error {
   readonly status: number
   /** Body crudo de la respuesta de error, para los pocos casos (ver csvIngestion.ts) que necesitan más que `detail`. */
   readonly details?: unknown
+  /**
+   * Código estable del backend (ver domain.exception.ErrorCode), cuando la
+   * respuesta lo trae. `message` viene del `detail`, que está en inglés y
+   * sirve para logs; el texto que ve el usuario se arma a partir de este
+   * código en shared/apiError.ts.
+   */
+  readonly code?: string
+  readonly resourceId?: unknown
 
-  constructor(message: string, status: number, details?: unknown) {
+  constructor(message: string, status: number, details?: unknown, code?: string, resourceId?: unknown) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.details = details
+    this.code = code
+    this.resourceId = resourceId
   }
 }
 
@@ -35,12 +47,14 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError<ProblemDetail>) => {
     if (error.response) {
-      const detail = error.response.data?.detail
+      const problem = error.response.data
       return Promise.reject(
         new ApiError(
-          detail ?? `Error ${error.response.status} al consultar ${error.config?.url}`,
+          problem?.detail ?? `Error ${error.response.status} al consultar ${error.config?.url}`,
           error.response.status,
-          error.response.data,
+          problem,
+          problem?.code,
+          problem?.resourceId,
         ),
       )
     }

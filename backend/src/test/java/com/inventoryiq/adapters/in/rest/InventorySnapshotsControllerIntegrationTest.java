@@ -86,7 +86,24 @@ class InventorySnapshotsControllerIntegrationTest {
 		mockMvc.perform(post("/api/v1/inventory-snapshots")
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"productId\": 9999, \"storeId\": 1, \"stockActual\": 10}"))
-				.andExpect(status().isNotFound());
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("PRODUCT_NOT_FOUND"))
+				.andExpect(jsonPath("$.resourceId").value(9999));
+	}
+
+	/**
+	 * El 404 identifica cuál de los dos recursos faltó: sin `code` ambos
+	 * casos se distinguirían solo por el texto del `detail`, que está en
+	 * inglés y es para logs, no un contrato.
+	 */
+	@Test
+	void returns404WithTheStoreCodeWhenTheStoreIsTheMissingOne() throws Exception {
+		mockMvc.perform(post("/api/v1/inventory-snapshots")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"productId\": 1001, \"storeId\": 9999, \"stockActual\": 10}"))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("STORE_NOT_FOUND"))
+				.andExpect(jsonPath("$.resourceId").value(9999));
 	}
 
 	@Test

@@ -28,9 +28,18 @@ public class GlobalExceptionHandler {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
 	}
 
+	/**
+	 * `detail` queda como dato técnico (el mensaje de la excepción, en
+	 * inglés); `code` y `resourceId` son el contrato legible por máquina
+	 * para que el cliente redacte el mensaje en su idioma sin parsear ese
+	 * texto — ver ErrorCode y, del lado del frontend, shared/apiError.ts.
+	 */
 	@ExceptionHandler(NotFoundException.class)
 	public ProblemDetail handleNotFound(NotFoundException ex) {
-		return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+		problem.setProperty("code", ex.getCode().name());
+		problem.setProperty("resourceId", ex.getResourceId());
+		return problem;
 	}
 
 	@ExceptionHandler(CsvIngestionThresholdExceededException.class)
