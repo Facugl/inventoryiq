@@ -126,6 +126,14 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<!-- Mismo motivo que en surefire (ver abajo): el JVM default timezone
+					     local (America/Buenos_Aires, un alias heredado) lo rechaza el
+					     startup parameter TimeZone del driver de Postgres, y Flyway no
+					     llega a conectar. UTC además iguala el entorno desplegado, que
+					     corre en el UTC por defecto del contenedor. -->
+					<jvmArguments>-Duser.timezone=UTC</jvmArguments>
+				</configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>

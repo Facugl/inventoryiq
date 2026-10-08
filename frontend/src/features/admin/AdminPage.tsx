@@ -339,9 +339,16 @@ function CsvIngestionSection() {
 
       {thresholdError && (
         <Alert severity="error" sx={{ mb: 2 }}>
+          {/*
+            El mensaje del backend va en inglés, como todas las excepciones de
+            dominio del proyecto, así que no se muestra: la frase se arma acá con
+            los campos estructurados que ya trae el error. thresholdError.message
+            queda igual para logs y consola.
+          */}
           <Typography variant="body2">
-            {thresholdError.message} ({thresholdError.rejectedCount} de {thresholdError.totalRowsRead} filas,{' '}
-            {thresholdError.rejectionRatePercent.toFixed(1)}%). No se persistió ninguna fila de este lote.
+            Se rechazaron {thresholdError.rejectedCount} de {thresholdError.totalRowsRead} filas (
+            {thresholdError.rejectionRatePercent.toFixed(1)}%), por encima del umbral permitido. No se persistió
+            ninguna fila de este lote.
           </Typography>
           <RejectionsTable rejections={thresholdError.rejections} />
         </Alert>
