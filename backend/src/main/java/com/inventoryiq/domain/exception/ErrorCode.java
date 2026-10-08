@@ -14,6 +14,12 @@ package com.inventoryiq.domain.exception;
  * El nombre de la constante ES el contrato con los clientes: se serializa
  * literal en la propiedad `code` de la respuesta de error, así que
  * renombrar una rompe a quien la consuma.
+ *
+ * Este enum no es la lista completa de códigos posibles: "VALIDATION_FAILED"
+ * lo emite GlobalExceptionHandler cuando la request no pasa la bean
+ * validation, una condición que no nace en el dominio —que no sabe que
+ * existe HTTP— y por eso vive en el adaptador. El espejo del frontend
+ * (shared/apiError.ts) cubre los dos orígenes.
  */
 public enum ErrorCode {
 

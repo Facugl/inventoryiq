@@ -97,7 +97,11 @@ class ForecastControllerTest {
 						.param("storeId", "1")
 						.param("referenceDate", "2025-12-24")
 						.param("horizonDays", "0"))
-				.andExpect(status().isBadRequest());
+				.andExpect(status().isBadRequest())
+				// El `detail` de Jakarta nombra el método del controller ("getForecast.horizonDays"):
+				// lo que el cliente usa para redactar es el código y el campo, no ese texto.
+				.andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+				.andExpect(jsonPath("$.invalidFields[0]").value("horizonDays"));
 	}
 
 	@Test

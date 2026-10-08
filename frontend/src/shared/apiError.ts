@@ -23,6 +23,16 @@ const MESSAGES_BY_CODE: Record<string, (resourceId: unknown) => string> = {
    * la vista con lo que la persona eligió.
    */
   DATE_RANGE_INVALID: () => 'La fecha "Desde" no puede ser posterior a la fecha "Hasta".',
+
+  /*
+   * Lo emite GlobalExceptionHandler, no el dominio, cuando la request no
+   * pasa la bean validation. El texto es genérico a propósito: la
+   * respuesta trae `invalidFields`, pero con los nombres que usa la API
+   * (maxCoverageDaysThreshold y parecidos), que sirven para un log y no
+   * para una pantalla. En la práctica este error casi no se ve, porque
+   * los schemas de yup atajan las mismas reglas antes de llamar.
+   */
+  VALIDATION_FAILED: () => 'Hay datos inválidos en el formulario. Revisá los valores e intentá de nuevo.',
 }
 
 /**
