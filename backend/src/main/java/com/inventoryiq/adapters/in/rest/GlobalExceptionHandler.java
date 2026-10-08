@@ -23,9 +23,19 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+	/**
+	 * `code` solo viaja cuando la validación lo define (las que un usuario
+	 * puede disparar desde un formulario, ver ErrorCode). Sin código, el
+	 * cliente cae al `detail` en inglés, que es lo correcto para una
+	 * invariante interna: no debería haber llegado una petición así.
+	 */
 	@ExceptionHandler(InvalidDomainDataException.class)
 	public ProblemDetail handleInvalidDomainData(InvalidDomainDataException ex) {
-		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+		if (ex.getCode() != null) {
+			problem.setProperty("code", ex.getCode().name());
+		}
+		return problem;
 	}
 
 	/**

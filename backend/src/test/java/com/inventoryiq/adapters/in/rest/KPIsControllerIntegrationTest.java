@@ -85,6 +85,23 @@ class KPIsControllerIntegrationTest {
 				.andExpect(jsonPath("$.immobilizedOverstockValue").value(closeTo(expectedTotal, 1e-2)));
 	}
 
+	/**
+	 * Único 400 de este proyecto que un usuario puede disparar sin pelearle
+	 * a la validación de cliente: los campos "Desde" y "Hasta" de la pantalla
+	 * de inicio no tienen restricción cruzada, así que se puede pedir un
+	 * rango invertido. El `code` es lo que le permite al frontend redactarlo
+	 * en español (ver shared/apiError.ts).
+	 */
+	@Test
+	void returns400WithTheDateRangeCodeWhenFromDateIsAfterToDate() throws Exception {
+		mockMvc.perform(get("/api/v1/kpis")
+						.param("storeId", "2")
+						.param("fromDate", "2026-02-01")
+						.param("toDate", "2026-01-01"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("DATE_RANGE_INVALID"));
+	}
+
 	@Test
 	void globalExceptionHandlerIsRegisteredInTheFullApplicationContext() throws Exception {
 		mockMvc.perform(get("/api/v1/kpis")

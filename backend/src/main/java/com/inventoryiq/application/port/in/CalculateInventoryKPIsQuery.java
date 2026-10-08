@@ -1,5 +1,6 @@
 package com.inventoryiq.application.port.in;
 
+import com.inventoryiq.domain.exception.ErrorCode;
 import com.inventoryiq.domain.exception.InvalidDomainDataException;
 
 import java.time.LocalDate;
@@ -26,7 +27,7 @@ public record CalculateInventoryKPIsQuery(Long storeId, LocalDate fromDate, Loca
 		}
 
 		if (fromDate.isAfter(toDate)) {
-			throw new InvalidDomainDataException("fromDate cannot be after toDate");
+			throw new InvalidDomainDataException(ErrorCode.DATE_RANGE_INVALID, "fromDate cannot be after toDate");
 		}
 	}
 }

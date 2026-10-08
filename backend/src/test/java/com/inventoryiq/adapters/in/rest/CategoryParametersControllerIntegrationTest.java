@@ -91,6 +91,8 @@ class CategoryParametersControllerIntegrationTest {
 		mockMvc.perform(patch("/api/v1/categories/2/parameters")
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"maxCoverageDaysThreshold\": 0, \"defaultExtraCoverageDays\": 5}"))
+				// Lo ataja la bean validation del DTO (@Positive), antes de llegar al command:
+				// por eso no lleva `code` y la respuesta viene sin cuerpo.
 				.andExpect(status().isBadRequest());
 	}
 }

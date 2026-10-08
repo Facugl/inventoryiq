@@ -114,7 +114,9 @@ class CsvIngestionControllerTest {
 				"file", "ventas.csv", "text/csv", CSV_CONTENT.getBytes(StandardCharsets.UTF_8));
 
 		mockMvc.perform(multipart("/api/v1/csv-ingestions").file(file).param("fileType", "INVENTORY"))
-				.andExpect(status().isBadRequest());
+				.andExpect(status().isBadRequest())
+				// Validación no alcanzable desde un formulario: va sin `code`, solo con el detail técnico.
+				.andExpect(jsonPath("$.code").doesNotExist());
 	}
 
 	@Test
