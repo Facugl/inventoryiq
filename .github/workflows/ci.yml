@@ -64,3 +64,25 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  etl:
+    name: ETL tests (pytest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: etl
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # El paquete no tiene dependencias de runtime: todo sale de la
+      # biblioteca estándar. Lo único que se instala es pytest.
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Test
+        run: pytest -q

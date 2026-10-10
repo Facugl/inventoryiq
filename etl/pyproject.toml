@@ -1,0 +1,15 @@
+[project]
+name = "inventoryiq-etl"
+version = "0.1.0"
+description = "Convierte los exports del POS XRP al formato de data/csv/ que consume InventoryIQ"
+requires-python = ">=3.11"
+# Sin dependencias a propósito: todo lo que hace falta (csv, re, html) está en
+# la biblioteca estándar. Evita arrastrar pandas para leer archivos de 10k
+# filas, y hace que el pipeline corra en cualquier Python sin instalar nada.
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

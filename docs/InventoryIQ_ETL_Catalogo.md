@@ -1,8 +1,9 @@
 # InventoryIQ — ETL del catálogo real
 
-**Estado: PLANIFICADO.** Este documento registra el relevamiento de los exports
-reales del POS y las decisiones de negocio tomadas antes de escribir código. No
-describe nada implementado: a la fecha no existe el directorio `etl/`.
+**Estado: PARCIALMENTE IMPLEMENTADO.** Este documento registra el relevamiento
+de los exports reales del POS y las decisiones de negocio tomadas antes de
+escribir código. De las cuatro entidades, sólo **categorías** está
+implementada (`etl/`); las otras tres siguen siendo diseño.
 
 Relevamiento hecho el 2026-10-10 sobre los exports en `data/real-export/`
 (carpeta ignorada por git, ver `.gitignore`).
@@ -198,12 +199,13 @@ El POS no registra lead time, ni por producto ni por proveedor. Se usa un único
 valor para todas las filas, corregible por proveedor desde la pantalla de
 Proveedores (Sección 8.11 de la documentación funcional).
 
-**Valor pendiente de confirmar.** Como referencia, los datos simulados usan
-entre 1 y 8 días, concentrados en 4–6.
+**Valor: 3 días** (decidido el 2026-10-10), a ajustar por proveedor desde la
+pantalla una vez cargado el catálogo.
 
 > El lead time alimenta directamente el punto de pedido: un valor demasiado
 > bajo genera quiebres, uno demasiado alto infla las sugerencias de compra. Es
-> el default con más impacto de los tres.
+> el default con más impacto de los tres, y el primero que conviene corregir
+> para los proveedores de mayor volumen.
 
 ### 4.4 Umbrales de categoría: los valores de los datos simulados
 
@@ -289,8 +291,16 @@ exports no se publican.
 
 Lo imponen las dependencias:
 
-1. **Categorías** — no depende de nada, el archivo más limpio. Fija la forma del
-   pipeline (lectores, reporte de descartes, estructura de tests).
-2. **Proveedores** — suma la reparación de `&amp;` y el proveedor sintético.
-3. **Inventario** — suma el lector HTML y las reglas de la decisión 4.1.
+1. **Categorías** — IMPLEMENTADO. No depende de nada y es el archivo más
+   limpio; fijó la forma del pipeline (lectores, reporte de incidencias,
+   estructura de tests). Sobre el export real: 267 leídas, 267 emitidas, cero
+   descartes y cero ajustes, y el `CsvCategoryRepositoryAdapter` real las carga
+   como 14 raíces y 253 con padre.
+2. **Proveedores** — pendiente. Suma el proveedor sintético de la decisión 4.2.
+3. **Inventario** — pendiente. Suma el lector HTML y las reglas de la 4.1.
 4. **Productos** — bloqueado por la Sección 5; depende de 1 y 2.
+
+> Nota del slice 1: el catálogo real **no contiene el `categoria_id` 14** que
+> usan los productos simulados, así que `data/csv/categorias.csv` no se puede
+> reemplazar de forma aislada — categorías y productos tienen que migrarse
+> juntos, o el backend falla al arrancar por integridad referencial.
