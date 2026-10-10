@@ -62,3 +62,16 @@ logs/
 .DS_Store
 Thumbs.db
 desktop.ini
+# ==============================
+# Datos reales del negocio (NUNCA versionar)
+# ==============================
+# Exports crudos del POS XRP: traen nombres de proveedores con CUIT,
+# precios de costo y márgenes, y niveles de stock reales. Es información
+# comercial de un negocio de verdad y este repositorio es público, así
+# que no entra al historial ni siquiera por error — una vez pusheada
+# queda ahí aunque después se borre el archivo.
+#
+# El pipeline ETL que los consuma debe leerlos desde esta carpeta local
+# y, si necesita datos de ejemplo versionados, usar fixtures sintéticos
+# que reproduzcan los defectos de formato, no los exports reales.
+data/real-export/
