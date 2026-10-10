@@ -2,8 +2,9 @@
 
 **Estado: PARCIALMENTE IMPLEMENTADO.** Este documento registra el relevamiento
 de los exports reales del POS y las decisiones de negocio tomadas antes de
-escribir código. De las cuatro entidades, sólo **categorías** está
-implementada (`etl/`); las otras tres siguen siendo diseño.
+escribir código. De las cuatro entidades, **categorías** y
+**proveedores** están implementadas (`etl/`); inventario y productos siguen
+siendo diseño.
 
 Relevamiento hecho el 2026-10-10 sobre los exports en `data/real-export/`
 (carpeta ignorada por git, ver `.gitignore`).
@@ -193,6 +194,24 @@ negocio vende.
 
 La pantalla de Proveedores permite corregir su lead time después.
 
+**Id `0` y razón social `Sin Proveedor`**, y ninguna de las dos cosas es
+arbitraria:
+
+- El POS usa `Id.Prov. = 0` **exclusivamente** para `Sin Proveedor` (verificado
+  sobre `Ventas_de_Productos.xls`), y el `0` no está tomado: los proveedores
+  registrados van de 1 a 62.
+- El export de precios **no trae id de proveedor**, sólo el nombre como texto
+  (`Id.` y `Id` son del producto, y `Cód.Prov.` está vacío en el 99,5% de las
+  filas). Productos va a resolver el proveedor por nombre, así que conservar el
+  literal del POS evita un caso especial en ese cruce.
+
+Al implementarlo se cambió el nombre previsto —"Sin asignar"— por el literal
+del POS, por el segundo motivo.
+
+El id `0` queda **reservado**: si el POS llegara a emitir un proveedor con ese
+id, la fila se descarta y se avisa. Sin eso, los productos sin proveedor
+terminarían apuntando en silencio a un proveedor real.
+
 ### 4.3 Lead time: un default global único
 
 El POS no registra lead time, ni por producto ni por proveedor. Se usa un único
@@ -296,7 +315,13 @@ Lo imponen las dependencias:
    estructura de tests). Sobre el export real: 267 leídas, 267 emitidas, cero
    descartes y cero ajustes, y el `CsvCategoryRepositoryAdapter` real las carga
    como 14 raíces y 253 con padre.
-2. **Proveedores** — pendiente. Suma el proveedor sintético de la decisión 4.2.
+2. **Proveedores** — IMPLEMENTADO. Sobre el export real: 62 leídas, 63
+   emitidas (las 62 más el proveedor de la decisión 4.2), cero descartes. El
+   `CsvSupplierRepositoryAdapter` real las carga, con la razón social que traía
+   la entidad HTML ya reparada. Verificado además que **los 54 nombres de
+   proveedor del export de precios resuelven** contra el archivo generado,
+   cubriendo las 10.325 filas de producto: el cruce de productos no va a
+   necesitar casos especiales.
 3. **Inventario** — pendiente. Suma el lector HTML y las reglas de la 4.1.
 4. **Productos** — bloqueado por la Sección 5; depende de 1 y 2.
 

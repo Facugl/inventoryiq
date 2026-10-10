@@ -11,15 +11,16 @@ campo están en [`../docs/InventoryIQ_ETL_Catalogo.md`](../docs/InventoryIQ_ETL_
 | Entidad | Estado |
 |---|---|
 | `categorias.csv` | implementado |
-| `proveedores.csv` | pendiente |
+| `proveedores.csv` | implementado |
 | `inventario.csv` | pendiente |
 | `productos.csv` | bloqueado — ningún export trae la categoría del producto para el catálogo completo (Sección 5 del doc) |
 
 ## Uso
 
 ```bash
-python -m inventoryiq_etl categorias --dry-run   # informa sin escribir
-python -m inventoryiq_etl categorias             # escribe en ../data/csv/
+python -m inventoryiq_etl categorias --dry-run    # informa sin escribir
+python -m inventoryiq_etl proveedores --dry-run
+python -m inventoryiq_etl categorias              # escribe en ../data/csv/
 ```
 
 Lee de `../data/real-export/` y escribe en `../data/csv/` por defecto;

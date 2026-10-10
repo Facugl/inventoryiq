@@ -5,6 +5,7 @@ Mapeo y decisiones en `docs/InventoryIQ_ETL_Catalogo.md`, secciones 3.1 y 4.4.
 
 from pathlib import Path
 
+from . import decisiones
 from .fuentes import escribir_csv_canonico, leer_csv_pos
 from .reporte import Reporte
 
@@ -17,12 +18,6 @@ COLUMNAS_DESTINO = [
 ]
 
 COLUMNAS_ORIGEN = {"idcate", "idparent", "denom"}
-
-# Decisión 4.4: el POS no exporta estos parámetros. Se aplica a todas las
-# categorías el valor más frecuente de los datos simulados, ajustable después
-# desde la pantalla de Administración.
-UMBRAL_SOBRESTOCK_DIAS = "20.0"
-COBERTURA_EXTRA_DIAS = "4.0"
 
 # El export usa idparent=0 para las raíces. No significa "hija de la categoría
 # 0": la propia categoría 0 ("No Categorizado") se declara con idparent=0, o
@@ -83,8 +78,8 @@ def transformar(filas: list[dict[str, str]]) -> tuple[list[dict[str, str]], Repo
             "categoria_id": fila["idcate"],
             "nombre": fila["denom"],
             "categoria_padre_id": padre_destino,
-            "umbral_max_cobertura_dias": UMBRAL_SOBRESTOCK_DIAS,
-            "dias_cobertura_extra_default": COBERTURA_EXTRA_DIAS,
+            "umbral_max_cobertura_dias": decisiones.UMBRAL_SOBRESTOCK_DIAS,
+            "dias_cobertura_extra_default": decisiones.COBERTURA_EXTRA_DIAS,
         })
 
     reporte.emitidas = len(destino)

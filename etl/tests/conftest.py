@@ -13,3 +13,20 @@ FIXTURES = Path(__file__).resolve().parent / "fixtures"
 @pytest.fixture
 def fixture_categorias() -> Path:
     return FIXTURES / "categorias_xrp.csv"
+
+
+@pytest.fixture
+def fixture_proveedores() -> Path:
+    return FIXTURES / "proveedores_xrp.csv"
+
+
+@pytest.fixture
+def fixture_proveedores_id_cero() -> Path:
+    """El POS emite un proveedor real con el id reservado para "sin asignar"."""
+    return FIXTURES / "proveedores_xrp_id_cero.csv"
+
+
+@pytest.fixture
+def fixture_proveedores_con_sin_proveedor() -> Path:
+    """El POS ya registra "Sin Proveedor" como proveedor propio."""
+    return FIXTURES / "proveedores_xrp_sin_proveedor_registrado.csv"

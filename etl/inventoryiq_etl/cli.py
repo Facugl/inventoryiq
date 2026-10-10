@@ -4,12 +4,13 @@ import argparse
 import sys
 from pathlib import Path
 
-from . import categorias
+from . import categorias, proveedores
 
 # Cada entidad declara su archivo de origen y su archivo de destino. A medida
 # que se agreguen proveedores, inventario y productos, se suman acá.
 ENTIDADES = {
     "categorias": (categorias.convertir, "categorias_xrp.csv", "categorias.csv"),
+    "proveedores": (proveedores.convertir, "Mantenimiento_de_Proveedores_.csv", "proveedores.csv"),
 }
 
 RAIZ = Path(__file__).resolve().parents[2]
