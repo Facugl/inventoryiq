@@ -30,3 +30,9 @@ def fixture_proveedores_id_cero() -> Path:
 def fixture_proveedores_con_sin_proveedor() -> Path:
     """El POS ya registra "Sin Proveedor" como proveedor propio."""
     return FIXTURES / "proveedores_xrp_sin_proveedor_registrado.csv"
+
+
+@pytest.fixture
+def fixture_stock() -> Path:
+    """HTML con extensión .xls, como el export de stock del POS."""
+    return FIXTURES / "stock_xrp.xls"

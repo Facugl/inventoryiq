@@ -2,9 +2,9 @@
 
 **Estado: PARCIALMENTE IMPLEMENTADO.** Este documento registra el relevamiento
 de los exports reales del POS y las decisiones de negocio tomadas antes de
-escribir código. De las cuatro entidades, **categorías** y
-**proveedores** están implementadas (`etl/`); inventario y productos siguen
-siendo diseño.
+escribir código. De las cuatro entidades, **categorías**,
+**proveedores** e **inventario** están implementadas (`etl/`); productos sigue
+siendo diseño, bloqueado por la Sección 5.
 
 Relevamiento hecho el 2026-10-10 sobre los exports en `data/real-export/`
 (carpeta ignorada por git, ver `.gitignore`).
@@ -158,12 +158,40 @@ Más el proveedor sintético de la decisión 4.2.
 
 | Destino | Origen | Transformación |
 |---|---|---|
-| `inventario_id` | — | generado |
-| `fecha_snapshot` | — | fecha de generación del export |
-| `producto_id` | `Código Barra` | vía el `sku` de productos |
+| `inventario_id` | — | correlativo |
+| `fecha_snapshot` | — | parámetro, ver más abajo |
+| `producto_id` | `Código Barra` | el código de barras **es** el producto_id |
 | `sucursal_id` | `Unidad de Negocio` | tabla de equivalencias, ver 2.5 |
 | `stock_actual` | `Stk.(U)` | ver 4.1 |
 | `stock_en_transito` | — | sin dato en el POS, `0` |
+
+**`producto_id` es el código de barras**, no un contador del ETL ni un código
+interno del POS:
+
+- Tiene que ser **estable entre corridas**. Las recomendaciones viven en
+  Postgres y guardan el `productId`: si una re-corrida reasignara los ids,
+  cada recomendación pasaría a apuntar a otro producto, en silencio. Un
+  contador depende del orden del archivo y del catálogo del día.
+- Es la **única clave que comparten los dos exports**. `Cod.Int` coincide
+  entre stock y precios (10.178 de 10.178 verificados), pero tiene 98
+  duplicados en precios, así que no identifica; el `Id.` de precios es casi
+  único pero no está en el export de stock.
+
+Consecuencia aceptada: `producto_id` y `sku` terminan siendo el mismo número.
+
+**`fecha_snapshot` no está en el export**: el documento no contiene ninguna
+fecha. Se recibe por parámetro y, si no se indica, se cae a la fecha de
+modificación del archivo. En ambos casos el reporte deja asentado qué fecha
+usó y de dónde salió, en vez de elegirla en silencio.
+
+**Las sucursales son una suposición pendiente de confirmar.** El export nombra
+`Administración Central Alem` (10.148 filas) y `Sucursal Santa Cruz` (2.577),
+pero `data/csv/sucursales.csv` todavía tiene los nombres **simulados** (Centro,
+Norte, Sur). La correspondencia se infirió por volumen: la unidad más grande se
+mapea a la sucursal 1. Un stock cargado en la sucursal equivocada no falla,
+simplemente recomienda mal, así que hay que confirmarla antes de volcar el
+inventario a `data/csv/` — y conviene que `sucursales.csv` pase a tener los
+nombres reales.
 
 ---
 
@@ -322,7 +350,13 @@ Lo imponen las dependencias:
    proveedor del export de precios resuelven** contra el archivo generado,
    cubriendo las 10.325 filas de producto: el cruce de productos no va a
    necesitar casos especiales.
-3. **Inventario** — pendiente. Suma el lector HTML y las reglas de la 4.1.
+3. **Inventario** — IMPLEMENTADO. Sumó el lector de HTML disfrazado de `.xls`.
+   Sobre el export real: 12.725 leídas, 7.209 emitidas, 5.516 descartadas
+   (5.515 sin dato de stock y 1 sin código de barras) y 5.152 ajustadas por
+   stock negativo. En la salida no queda ningún negativo, y el
+   `CsvInventoryRepositoryAdapter` real la carga — lo que también prueba el
+   ajuste, porque el invariante `currentStock >= 0` de `Inventory` habría
+   fallado con cualquier negativo.
 4. **Productos** — bloqueado por la Sección 5; depende de 1 y 2.
 
 > Nota del slice 1: el catálogo real **no contiene el `categoria_id` 14** que
