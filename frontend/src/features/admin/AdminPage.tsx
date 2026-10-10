@@ -27,7 +27,7 @@ import { recordInventoryCount } from '../../api/inventorySnapshots'
 import { searchProducts } from '../../api/products'
 import { getCategories, updateCategoryParameters } from '../../api/categories'
 import { getErrorMessage } from '../../shared/apiError'
-import { showSuccess } from '../../shared/toast'
+import { showError, showSuccess } from '../../shared/toast'
 import type { Category, CsvFileType, InventorySnapshot, ProductSummary, RowRejection, Store } from '../../api/types'
 import { inventoryCountSchema, type InventoryCountFormValues } from './validation/inventoryCountSchema'
 import { categoryParametersSchema, type CategoryParametersFormValues } from './validation/categoryParametersSchema'
@@ -95,6 +95,7 @@ function InventoryCountSection({ stores }: { stores: Store[] }) {
       setSelectedProduct(null)
       reset()
     },
+    onError: (err) => showError(getErrorMessage(err)),
   })
 
   const selectProduct = (product: ProductSummary) => {
@@ -109,7 +110,8 @@ function InventoryCountSection({ stores }: { stores: Store[] }) {
     reset()
   }
 
-  const saveError = errors.quantity?.message ?? (countMutation.error ? getErrorMessage(countMutation.error) : null)
+  // Solo la validación de cliente: el error de la mutación lo informa el toast.
+  const saveError = errors.quantity?.message ?? null
 
   return (
     <Box component="section" sx={{ mb: 4 }}>
@@ -256,6 +258,11 @@ export function CsvIngestionSection() {
   const mutation = useMutation({
     mutationFn: (selectedFile: File) => ingestCsvFile(fileType, selectedFile),
     onSuccess: (summary) => showSuccess(`${summary.acceptedCount} de ${summary.totalRowsRead} filas aceptadas.`),
+    // El 422 por umbral no va al toast: trae la tabla de filas rechazadas,
+    // que es un informe y no cabe en una notificación efímera.
+    onError: (err) => {
+      if (!(err instanceof CsvIngestionThresholdError)) showError(getErrorMessage(err))
+    },
   })
 
   const selected = CSV_FILE_TYPES.find((option) => option.value === fileType) ?? CSV_FILE_TYPES[0]
@@ -284,7 +291,8 @@ export function CsvIngestionSection() {
   }
 
   const thresholdError = mutation.error instanceof CsvIngestionThresholdError ? mutation.error : null
-  const genericError = fileError ?? (mutation.error && !thresholdError ? getErrorMessage(mutation.error) : null)
+  // Solo la validación de cliente: el resto lo informa el toast o el bloque del umbral.
+  const genericError = fileError
 
   return (
     <Box component="section" sx={{ mb: 4 }}>
@@ -375,6 +383,7 @@ function RecalculateSection({ stores }: { stores: Store[] }) {
   const mutation = useMutation({
     mutationFn: () => recalculateProductStatus(storeId ? Number(storeId) : undefined),
     onSuccess: () => showSuccess('Recálculo completado.'),
+    onError: (err) => showError(getErrorMessage(err)),
   })
 
   const storeName = (id: number) => stores.find((store) => store.id === id)?.name ?? `Sucursal #${id}`
@@ -413,12 +422,6 @@ function RecalculateSection({ stores }: { stores: Store[] }) {
           {mutation.isPending ? 'Recalculando…' : 'Recalcular'}
         </Button>
       </Stack>
-
-      {mutation.error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {getErrorMessage(mutation.error)}
-        </Alert>
-      )}
 
       {mutation.data && (
         <TableContainer component={Paper} variant="outlined">
@@ -482,12 +485,12 @@ function CategoryParametersEditRow({ category, onCancel, onSaved }: CategoryPara
       showSuccess(`Parámetros de "${updated.name}" actualizados.`)
       onSaved()
     },
+    onError: (err) => showError(getErrorMessage(err)),
   })
 
+  // Solo validación de cliente: el error de la mutación lo informa el toast.
   const rowError =
-    errors.maxCoverageDaysThreshold?.message ??
-    errors.defaultExtraCoverageDays?.message ??
-    (mutation.error ? getErrorMessage(mutation.error) : null)
+    errors.maxCoverageDaysThreshold?.message ?? errors.defaultExtraCoverageDays?.message ?? null
 
   return (
     <>

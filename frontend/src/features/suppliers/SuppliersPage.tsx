@@ -20,7 +20,7 @@ import {
 } from '@mui/material'
 import { getSuppliers, updateSupplierLeadTime } from '../../api/suppliers'
 import { getErrorMessage } from '../../shared/apiError'
-import { showSuccess } from '../../shared/toast'
+import { showError, showSuccess } from '../../shared/toast'
 import type { Supplier } from '../../api/types'
 import { leadTimeSchema, type LeadTimeFormValues } from './validation/leadTimeSchema'
 
@@ -50,9 +50,11 @@ function LeadTimeEditRow({ supplier, onCancel, onSaved }: LeadTimeEditRowProps) 
       showSuccess(`Lead time de "${updated.businessName}" actualizado.`)
       onSaved()
     },
+    onError: (err) => showError(getErrorMessage(err)),
   })
 
-  const rowError = errors.leadTimeDays?.message ?? (mutation.error ? getErrorMessage(mutation.error) : null)
+  // Solo validación de cliente: el error de la mutación lo informa el toast.
+  const rowError = errors.leadTimeDays?.message ?? null
 
   return (
     <>

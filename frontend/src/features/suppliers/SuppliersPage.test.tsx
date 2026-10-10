@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { SuppliersPage } from './SuppliersPage'
 import { getSuppliers, updateSupplierLeadTime } from '../../api/suppliers'
-import { showSuccess } from '../../shared/toast'
+import { showError, showSuccess } from '../../shared/toast'
 import { ApiError } from '../../api/http'
 import type { Supplier } from '../../api/types'
 
@@ -121,7 +121,11 @@ describe('SuppliersPage', () => {
     expect(within(row).getByText('4')).toBeInTheDocument()
   })
 
-  it('muestra en la fila el error traducido si el guardado falla', async () => {
+  /**
+   * El error de la mutación va al toast, no a la fila: el inline queda
+   * reservado para la validación de cliente, que sí apunta a un campo.
+   */
+  it('avisa por toast con el mensaje traducido si el guardado falla', async () => {
     getSuppliersMock.mockResolvedValue([supplier()])
     updateLeadTimeMock.mockRejectedValue(
       new ApiError('Supplier not found: 1', 404, undefined, 'SUPPLIER_NOT_FOUND', 1),
@@ -131,8 +135,9 @@ describe('SuppliersPage', () => {
     await startEditing('PIANCHU SRL')
     await userEvent.click(screen.getByRole('button', { name: 'Guardar' }))
 
-    expect(await screen.findByText('No se encontró el proveedor 1.')).toBeInTheDocument()
-    // Sigue en edición para poder reintentar.
+    await vi.waitFor(() => expect(showError).toHaveBeenCalledWith('No se encontró el proveedor 1.'))
+    expect(screen.queryByText('Supplier not found: 1')).not.toBeInTheDocument()
+    // Sigue en edición, con lo tipeado, para poder reintentar.
     expect(screen.getByRole('button', { name: 'Guardar' })).toBeInTheDocument()
   })
 })

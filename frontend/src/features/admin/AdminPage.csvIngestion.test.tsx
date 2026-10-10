@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { CsvIngestionSection } from './AdminPage'
 import { ingestCsvFile, CsvIngestionThresholdError } from '../../api/csvIngestion'
+import { ApiError } from '../../api/http'
+import { showError } from '../../shared/toast'
 
 vi.mock('../../api/csvIngestion', async () => {
   const actual = await vi.importActual<typeof import('../../api/csvIngestion')>('../../api/csvIngestion')
@@ -98,6 +100,25 @@ describe('CsvIngestionSection', () => {
     expect(await screen.findByText(/Se rechazaron 1 de 2 filas \(50\.0%\)/)).toBeInTheDocument()
     expect(screen.queryByText(/backend message/)).not.toBeInTheDocument()
     expect(screen.getByText('producto_id 9999 no existe en el catálogo')).toBeInTheDocument()
+  })
+
+  /**
+   * Un error común de la mutación sí va al toast. El 422 del test anterior
+   * es la excepción deliberada: trae la tabla de rechazos, que es un
+   * informe y no entra en una notificación que se cierra sola.
+   */
+  it('avisa por toast cuando el archivo no tiene las columnas del tipo elegido', async () => {
+    ingestCsvFileMock.mockRejectedValue(
+      new ApiError('El archivo no tiene las columnas esperadas para inventario', 400),
+    )
+    renderSection()
+
+    await userEvent.upload(fileInput(), csv('cualquiera.csv'))
+    await userEvent.click(screen.getByRole('button', { name: /subir archivo/i }))
+
+    await vi.waitFor(() =>
+      expect(showError).toHaveBeenCalledWith('El archivo no tiene las columnas esperadas para inventario'),
+    )
   })
 
   /**
