@@ -22,5 +22,7 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  /* Los tests los typechequea tsconfig.test.json, que sí tiene tipos de Node. */
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/test"]
 }

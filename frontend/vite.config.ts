@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 
 // http://localhost:8080 sirve para desarrollo local (backend corriendo aparte).
@@ -15,6 +15,15 @@ const runningInDocker = Boolean(process.env.VITE_BACKEND_URL)
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: ['./src/test/setup.ts'],
+    // Los tests no levantan el dev server, así que el proxy de `server` no
+    // aplica: las llamadas a /api las intercepta cada test mockeando el
+    // módulo de api correspondiente.
+    include: ['src/**/*.test.{ts,tsx}'],
+  },
   server: {
     proxy: {
       '/api': backendUrl,

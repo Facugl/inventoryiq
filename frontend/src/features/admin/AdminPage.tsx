@@ -246,7 +246,9 @@ const CSV_FILE_TYPES: { value: CsvFileType; label: string; fileName: string; col
   },
 ]
 
-function CsvIngestionSection() {
+// Exportada para poder probarla aislada (ver AdminPage.csvIngestion.test.tsx);
+// AdminPage la sigue usando como una sección más, sin cambios.
+export function CsvIngestionSection() {
   const [fileType, setFileType] = useState<CsvFileType>('SALES')
   const [file, setFile] = useState<File | null>(null)
   const [fileError, setFileError] = useState<string | null>(null)
