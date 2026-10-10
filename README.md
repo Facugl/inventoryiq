@@ -174,6 +174,9 @@ Limitaciones del plan free a tener en cuenta:
 - `docs/InventoryIQ_Documentacion.md` — especificación funcional completa (visión, reglas de negocio, modelo de datos, roadmap evolutivo).
 - `docs/InventoryIQ_Arquitectura.md` — arquitectura y flujos **implementados**, auditados contra el código.
 - `docs/InventoryIQ_Roadmap.md` — estado de avance por fase y próximos pasos.
+- `docs/InventoryIQ_ETL_Catalogo.md` — relevamiento de los exports reales del POS y
+  decisiones del pipeline que los convertiría al formato de `data/csv/` (**planificado**,
+  todavía sin implementar).
 - `docs/README_datos_simulados.md` — cómo se generaron los CSV de prueba.
 - **Swagger UI** (con el backend corriendo) — http://localhost:8080/swagger-ui/index.html:
   documentación interactiva de cada endpoint (parámetros, request/response, "Try it out"

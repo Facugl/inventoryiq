@@ -178,6 +178,14 @@ Los próximos pasos concretos, en orden de valor para el uso real del sistema:
    registrados en `Mantenimiento_de_Proveedores_` (la pantalla de Proveedores,
    Sección 8.11, ya permite cargar el lead time de cada uno a mano una vez que el
    ETL los vuelque a `proveedores.csv`).
+
+   **Actualización (2026-10-10):** se relevaron los exports y se tomaron las
+   decisiones de negocio del pipeline — ver `docs/InventoryIQ_ETL_Catalogo.md`.
+   El relevamiento corrigió varios supuestos de esta lista: la reconciliación de
+   proveedores no necesita matcheo difuso (52 de 54 nombres matchean exacto, y el
+   restante sólo fallaba por la misma entidad HTML), y aparecieron dos problemas
+   no previstos: ningún export trae la categoría del producto para el catálogo
+   completo, y el 40% de las filas de stock vienen en negativo.
 2. **README de arranque rápido** en la raíz del repo — **completado** (ver Fase 6).
 3. Recién después, evaluar si conviene avanzar hacia v1.1/v1.2 (alertas configurables,
    multi-sucursal) o directamente hacia v2.0 (ETL real + Data Warehouse), según qué
