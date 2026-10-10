@@ -46,7 +46,7 @@ datos de Postgres).
 - **Detalle de producto** — proyección de venta diaria de un producto puntual, ajustada por estacionalidad.
 - **Clasificación ABC/XYZ** — matriz de prioridad: ABC por contribución al valor de venta, XYZ por variabilidad de demanda.
 - **Proveedores** — catálogo de proveedores activos, con lead time editable y condición de pago.
-- **Administración** — conteo manual de stock, carga de ventas por CSV, disparo manual del recálculo diario, y edición de parámetros de categoría (umbral de sobrestock, stock de seguridad extra).
+- **Administración** — conteo manual de stock, carga de ventas o inventario por CSV (el tipo se elige al subir el archivo), disparo manual del recálculo diario, y edición de parámetros de categoría (umbral de sobrestock, stock de seguridad extra).
 
 ### Capturas
 
@@ -74,7 +74,8 @@ Antes de exportar desde tu sistema, tené en cuenta:
 - **`categoria_id`**: cada producto tiene que apuntar a una categoría que exista
   en `categorias.csv`, o el backend falla al arrancar (la carga de estos dos
   archivos es todo-o-nada: no hay tolerancia a filas individuales rotas, a
-  diferencia de la carga de ventas desde la pantalla de Administración).
+  diferencia de la carga de ventas o inventario desde la pantalla de
+  Administración, que rechaza fila por fila hasta un umbral).
 - **`lead_time_dias`**: tiene que ser un número mayor a 0 en todas las filas.
   Si hoy no lo llevás registrado por producto, un valor genérico razonable
   (por ejemplo, el lead time típico de tu proveedor habitual) sirve como
@@ -131,13 +132,19 @@ correctamente, antes de probar las pantallas a mano:
    navegando a mano):
    ```bash
    cd backend && ./mvnw test
-   cd frontend && pnpm lint && pnpm build
+   cd frontend && pnpm lint && pnpm test && pnpm build
    ```
+   Los tests del backend necesitan Docker corriendo: varios de integración
+   levantan un PostgreSQL efímero con Testcontainers.
 
 ## Desarrollo
 
 - **Backend:** Java 17 + Spring Boot, arquitectura hexagonal. Tests: `cd backend && ./mvnw test`.
-- **Frontend:** React + TypeScript + Vite + MUI. Lint/build: `cd frontend && pnpm lint && pnpm build`.
+- **Frontend:** React + TypeScript + Vite + MUI, con TanStack Query, react-hook-form y yup.
+  Tests con Vitest + Testing Library: `cd frontend && pnpm test` (`pnpm test:watch` para desarrollo).
+  Lint y build: `pnpm lint && pnpm build`.
+  El gestor de paquetes es **pnpm**, no npm: `npm install` rompe contra el `node_modules`
+  con symlinks que deja pnpm.
 - El frontend, dentro de Docker, usa `VITE_BACKEND_URL` para encontrar al backend
   (ver `docker-compose.yml`) y hot-reload vía polling (necesario en Docker Desktop
   para Windows/Mac — ver `frontend/vite.config.ts`).

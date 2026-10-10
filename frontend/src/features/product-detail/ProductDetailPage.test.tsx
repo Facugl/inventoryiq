@@ -94,28 +94,33 @@ describe('ProductDetailPage', () => {
   })
 
   /**
-   * El input declara required y min=1, y al no declarar step toma step=1,
-   * así que el navegador ya rechaza vacío, 0, negativos y decimales: el
-   * formulario no se envía y no se consulta nada.
-   *
-   * Consecuencia que conviene tener presente: la validación a mano del
-   * componente (`Number.isInteger(...) || <= 0`, y la precedencia
-   * `validationError ?? getErrorMessage(error)`) no llega a ejecutarse
-   * nunca desde la UI, y su mensaje en español no se ve — lo que se ve es
-   * el cartel nativo del navegador.
+   * La validación del ID vive solo en handleSubmit: el input no declara
+   * required ni min, y declara step="any", justamente para que el envío
+   * llegue al JS y el usuario lea el mensaje en español en vez del cartel
+   * nativo del navegador (un type="number" toma step=1 si no se declara,
+   * y eso solo ya rechazaba los decimales antes de llegar acá).
    */
   it.each([
     ['un decimal', '1.5'],
     ['cero', '0'],
     ['un negativo', '-3'],
-  ])('no consulta al backend con %s como ID de producto', async (_caso, valor) => {
+  ])('rechaza %s como ID de producto con un mensaje en español', async (_caso, valor) => {
     renderPage()
 
     await userEvent.type(productIdField(), valor)
     await userEvent.click(searchButton())
 
+    expect(await screen.findByText('Ingresá un ID de producto válido.')).toBeInTheDocument()
     expect(getProductForecastMock).not.toHaveBeenCalled()
-    expect(screen.getByText(/Ingresá un ID de producto/)).toBeInTheDocument()
+  })
+
+  it('rechaza el formulario vacío con el mismo mensaje', async () => {
+    renderPage()
+
+    await userEvent.click(searchButton())
+
+    expect(await screen.findByText('Ingresá un ID de producto válido.')).toBeInTheDocument()
+    expect(getProductForecastMock).not.toHaveBeenCalled()
   })
 
   it('traduce al español el error del backend cuando el producto no existe', async () => {
@@ -129,5 +134,29 @@ describe('ProductDetailPage', () => {
 
     expect(await screen.findByText('No se encontró el producto 9999.')).toBeInTheDocument()
     expect(screen.queryByText(/Product not found/)).not.toBeInTheDocument()
+  })
+
+  /**
+   * errorMessage es `validationError ?? getErrorMessage(error)`: el error
+   * del formulario gana sobre el que quedó de la consulta anterior. Si se
+   * invirtiera, al escribir un ID inválido seguiría viéndose el error
+   * viejo del backend y el formulario parecería no responder.
+   */
+  it('el error del formulario reemplaza al que quedó de la consulta anterior', async () => {
+    getProductForecastMock.mockRejectedValue(
+      new ApiError('Product not found: 9999', 404, undefined, 'PRODUCT_NOT_FOUND', 9999),
+    )
+
+    renderPage()
+    await userEvent.type(productIdField(), '9999')
+    await userEvent.click(searchButton())
+    expect(await screen.findByText('No se encontró el producto 9999.')).toBeInTheDocument()
+
+    await userEvent.clear(productIdField())
+    await userEvent.type(productIdField(), '1.5')
+    await userEvent.click(searchButton())
+
+    expect(await screen.findByText('Ingresá un ID de producto válido.')).toBeInTheDocument()
+    expect(screen.queryByText('No se encontró el producto 9999.')).not.toBeInTheDocument()
   })
 })

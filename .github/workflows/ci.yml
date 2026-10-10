@@ -27,7 +27,7 @@ jobs:
         run: ./mvnw test
 
   frontend:
-    name: Frontend lint & build (pnpm)
+    name: Frontend tests, lint & build (pnpm)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -55,6 +55,12 @@ jobs:
 
       - name: Lint
         run: pnpm lint
+
+      # Corre antes del build porque falla más rápido. El test de contrato de
+      # códigos de error lee archivos del backend por ruta relativa, así que
+      # necesita el repo completo — que es lo que deja actions/checkout.
+      - name: Test
+        run: pnpm test
 
       - name: Build
         run: pnpm build

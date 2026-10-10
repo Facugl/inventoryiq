@@ -104,14 +104,25 @@ export function ProductDetailPage({ stores, initialSelection }: ProductDetailPag
         useFlexGap
         sx={{ flexWrap: 'wrap', alignItems: 'flex-end', mb: 3, p: 2, border: 1, borderColor: 'divider', borderRadius: 1 }}
       >
+        {/*
+          Sin `required` ni `min`, y con step="any": las restricciones de
+          HTML bloqueaban el envío antes de que corriera la validación de
+          handleSubmit, así que el usuario veía el cartel nativo del
+          navegador en vez de "Ingresá un ID de producto válido.". Ojo que
+          un type="number" toma step=1 aunque no se declare, y eso solo ya
+          alcanzaba para rechazar los decimales.
+
+          La validación vive ahora en un solo lugar (handleSubmit), que es
+          el que puede explicar el problema en español y en el idioma del
+          resto de la pantalla.
+        */}
         <TextField
           type="number"
           size="small"
           label="ID de producto"
           value={productId}
           onChange={(event) => setProductId(event.target.value)}
-          required
-          slotProps={{ htmlInput: { min: 1 } }}
+          slotProps={{ htmlInput: { step: 'any' } }}
         />
 
         <TextField select size="small" label="Sucursal" value={storeId} onChange={(event) => setStoreId(Number(event.target.value))}>
