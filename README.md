@@ -175,8 +175,9 @@ Limitaciones del plan free a tener en cuenta:
 - `docs/InventoryIQ_Arquitectura.md` — arquitectura y flujos **implementados**, auditados contra el código.
 - `docs/InventoryIQ_Roadmap.md` — estado de avance por fase y próximos pasos.
 - `docs/InventoryIQ_ETL_Catalogo.md` — relevamiento de los exports reales del POS,
-  decisiones del pipeline y mapeo campo por campo. Implementado para categorías
-  (ver `etl/README.md`); proveedores, inventario y productos siguen siendo diseño.
+  decisiones del pipeline y mapeo campo por campo. Implementado para categorías,
+  proveedores e inventario (ver `etl/README.md`); productos sigue bloqueado porque
+  ningún export trae la categoría del producto para el catálogo completo.
 - `docs/README_datos_simulados.md` — cómo se generaron los CSV de prueba.
 - **Swagger UI** (con el backend corriendo) — http://localhost:8080/swagger-ui/index.html:
   documentación interactiva de cada endpoint (parámetros, request/response, "Try it out"
