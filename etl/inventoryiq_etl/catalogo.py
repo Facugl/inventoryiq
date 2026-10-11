@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 
-from . import categorias, inventario, proveedores
+from . import categorias, inventario, productos, proveedores
 from .reporte import Reporte
 
 # Los seis que leen los adaptadores (ver adapters/out/csv/*.FILE_NAME).
@@ -34,11 +34,13 @@ ARCHIVOS_REQUERIDOS = [
 
 # entidad -> (función, archivo de origen en el export, archivo de destino)
 # El orden importa: inventario necesita el catálogo de productos ya generado
-# para poder descartar el stock de productos que no existen. Cuando se sume
-# productos, va antes que inventario.
+# para poder descartar el stock de productos que no existen, así que productos
+# va antes. Productos, a su vez, lee más de un export, pero los auxiliares los
+# resuelve él mismo a partir de la misma carpeta (ver `productos._auxiliares`).
 ENTIDADES_MIGRADAS = {
     "categorias": (categorias.convertir, "categorias_xrp.csv", "categorias.csv"),
     "proveedores": (proveedores.convertir, "Mantenimiento_de_Proveedores_.csv", "proveedores.csv"),
+    "productos": (productos.convertir, "Cambio_de_precios_xrp.csv", "productos.csv"),
     "inventario": (inventario.convertir, "Consulta_de_stock_xrp.xls", "inventario.csv"),
 }
 

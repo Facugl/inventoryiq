@@ -13,6 +13,7 @@ sobre los exports reales.
 import csv
 import io
 import re
+from decimal import Decimal, InvalidOperation
 from collections import Counter
 from pathlib import Path
 
@@ -28,6 +29,10 @@ ENTIDADES_CONOCIDAS = {
     "&lt;": "<",
     "&gt;": ">",
     "&nbsp;": " ",
+    # Espacio duro en su forma numérica. Aparece en el listado de ventas, y
+    # termina con `;` igual que las demás: en un CSV del POS correría las
+    # columnas exactamente como `&amp;`.
+    "&#160;": " ",
 }
 
 _ENTIDAD = re.compile(r"&(?:[A-Za-z][A-Za-z0-9]*|#\d+);")
@@ -125,7 +130,70 @@ def leer_tabla_html(ruta: Path) -> list[dict[str, str]]:
     ]
 
 
-_MILES = re.compile(r"[.,](?=\d{3})")
+_FILA_XML = re.compile(r"<Row[^>]*>(.*?)</Row>", re.S)
+_CELDA_XML = re.compile(r"<Cell[^>]*>(.*?)</Cell>", re.S)
+_DATO_XML = re.compile(r"<Data[^>]*>(.*?)</Data>", re.S)
+
+
+def leer_spreadsheetml(ruta: Path) -> list[dict[str, str]]:
+    """Filas de un export SpreadsheetML disfrazado de .xls, como dicts.
+
+    Es el XML de Excel 2003, no un .xls binario: ni xlrd ni openpyxl lo abren.
+    Se parsea con expresiones regulares, igual que el HTML, porque la
+    estructura es plana: Row > Cell > Data, sin anidamiento.
+
+    Las primeras filas son decoración (empresa, título) y traen una sola
+    celda; la cabecera se reconoce igual que en `leer_tabla_html`, como la
+    primera fila que cubre todas las columnas de datos con celdas no vacías.
+
+    El parseo es posicional, y eso sería peligroso si el exportador omitiera
+    las celdas vacías declarando `ss:Index` en la siguiente: las columnas se
+    correrían en silencio. Los exports relevados no usan `ss:Index` en ninguna
+    celda, y por eso las filas de ancho distinto se ignoran en vez de
+    rellenarse.
+    """
+    crudo = ruta.read_text(encoding=ENCODING_POS, errors="replace")
+
+    filas = []
+    for fila in _FILA_XML.findall(crudo):
+        celdas = []
+        for celda in _CELDA_XML.findall(fila):
+            dato = _DATO_XML.search(celda)
+            texto = _TAG.sub("", dato.group(1)) if dato else ""
+            celdas.append(reparar_entidades(texto)[0].strip())
+        filas.append(celdas)
+
+    anchos = Counter(len(f) for f in filas if len(f) > 1)
+    if not anchos:
+        return []
+    ancho_datos = anchos.most_common(1)[0][0]
+
+    cabecera = next((f for f in filas if len(f) == ancho_datos and all(f)), None)
+    if cabecera is None:
+        return []
+
+    return [
+        dict(zip(cabecera, f))
+        for f in filas
+        if len(f) == ancho_datos and f != cabecera
+    ]
+
+
+def parsear_decimal(valor: str) -> Decimal | None:
+    """Decimal de un campo monetario del POS, o None si no lo es.
+
+    Los precios vienen como "2,196.15000": coma de miles, punto decimal. No se
+    redondea a centavos: esa precisión es la que declara el POS, y recortarla
+    sería un ajuste silencioso sobre las 10.000 filas del catálogo. El
+    `BigDecimal` del backend parsea la cadena completa sin problema.
+    """
+    texto = (valor or "").strip().replace(",", "")
+    if not texto:
+        return None
+    try:
+        return Decimal(texto)
+    except InvalidOperation:
+        return None
 
 
 def parsear_entero(valor: str) -> int | None:

@@ -34,6 +34,54 @@ COBERTURA_EXTRA_DIAS = "4.0"
 PROVEEDOR_SIN_ASIGNAR_ID = "0"
 PROVEEDOR_SIN_ASIGNAR_NOMBRE = "Sin Proveedor"
 
+# --- Decisión 4.7 — Productos sin categoría -------------------------------
+# El listado de ventas trae la categoría de los productos que se vendieron
+# alguna vez, no de todo el catálogo: quedan 3.862 productos sin ella, de los
+# cuales sólo 599 tienen stock.
+#
+# No se inventa una categoría: se usa la que el POS ya trae. `categorias_xrp`
+# declara `idcate=0, No Categorizado`, y el slice de categorías la emite como
+# una raíz más. Es el mismo caso que el proveedor de la decisión 4.2 — el
+# centinela existe en el origen, no lo agrega el ETL.
+#
+# Consecuencia aceptada: esos productos comparten umbral de sobrestock y
+# cobertura extra, como cualquier categoría (decisión 4.4), y se corrigen
+# desde Administración. Los 599 con stock entran al sistema y se pueden
+# reponer; el resto queda inerte, sin stock ni ventas que disparen nada.
+CATEGORIA_SIN_ASIGNAR_ID = "0"
+CATEGORIA_SIN_ASIGNAR_NOMBRE = "No Categorizado"
+
+
+# --- Unidad de medida -----------------------------------------------------
+# El POS no la declara como tal: viene dentro de `Presentación`, al final y en
+# su propia nomenclatura ("1x1 Un", "1x Kgr", "1x700 ml"). Se traduce al
+# vocabulario del dataset simulado (UN/KG), que es lo que el backend arrastra
+# en `Product.unitOfMeasure`.
+#
+# Ese campo hoy no alimenta ningún cálculo: el dominio lo transporta y nadie
+# lo lee. Por eso un valor desconocido no descarta el producto — se cae al
+# default y el reporte lo deja asentado.
+UNIDAD_POR_PRESENTACION = {
+    "un": "UN",
+    "kgr": "KG",
+    "kg": "KG",
+    "lts": "LT",
+    "lt": "LT",
+    "ml": "ML",
+    "grs": "GR",
+    "gr": "GR",
+}
+UNIDAD_MEDIDA_DEFAULT = "UN"
+
+
+def unidad_medida_de(presentacion: str) -> str | None:
+    """La unidad que declara una `Presentación` del POS, o None si no la trae."""
+    tokens = (presentacion or "").strip().split()
+    if not tokens:
+        return None
+    return UNIDAD_POR_PRESENTACION.get(tokens[-1].lower())
+
+
 # --- Decisión 4.5 — Estado de los productos y proveedores -----------------
 ACTIVO = "True"
 
@@ -72,11 +120,18 @@ def producto_id_de(codigo_barra: str) -> str | None:
 # El export de stock nombra las sucursales en `Unidad de Negocio`; el backend
 # las identifica por el id de `data/csv/sucursales.csv`.
 #
-# OJO: `sucursales.csv` todavía tiene los nombres SIMULADOS (Centro, Norte,
-# Sur), no los reales del POS, así que esta correspondencia es una suposición
-# por volumen: la unidad con 10.148 filas se toma como la principal. Hay que
-# confirmarla antes de volcar el inventario a `data/csv/`: un stock cargado en
-# la sucursal equivocada no falla, simplemente recomienda mal.
+# La correspondencia se infiere por VOLUMEN: la unidad con 10.148 filas se toma
+# como la principal. No se puede verificar contra los nombres, porque
+# `sucursales.csv` tiene los simulados (Centro, Norte, Sur) y no los reales del
+# POS.
+#
+# Decisión del usuario (2026-10-11, Sección 5.2 del doc): queda así. Los
+# nombres simulados se conservan —tienen la ventaja de no publicar los nombres
+# reales del negocio en un repositorio público— y se arrastra `sucursales.csv`
+# tal cual al catálogo real, que vive en `data/csv-real/` y no en `data/csv/`.
+#
+# Lo que sigue en pie es la consecuencia si el mapeo estuviera invertido: un
+# stock cargado en la sucursal equivocada no falla, simplemente recomienda mal.
 SUCURSAL_POR_UNIDAD_DE_NEGOCIO = {
     "Administración Central Alem": "1",
     "Sucursal Santa Cruz": "2",

@@ -1,13 +1,16 @@
 # InventoryIQ — ETL del catálogo real
 
-**Estado: PARCIALMENTE IMPLEMENTADO.** Este documento registra el relevamiento
-de los exports reales del POS y las decisiones de negocio tomadas antes de
-escribir código. De las cuatro entidades, **categorías**,
-**proveedores** e **inventario** están implementadas (`etl/`); productos sigue
-siendo diseño, bloqueado por la Sección 5.
+**Estado: IMPLEMENTADO.** Este documento registra el relevamiento de los
+exports reales del POS y las decisiones de negocio tomadas antes de escribir
+código. Las cuatro entidades —**categorías**, **proveedores**, **inventario** y
+**productos**— están implementadas (`etl/`).
+
+El catálogo todavía **no es utilizable**, pero ya no por el ETL: falta el
+historial de ventas, que ningún export entrega (Sección 5.3).
 
 Relevamiento hecho el 2026-10-10 sobre los exports en `data/real-export/`
-(carpeta ignorada por git, ver `.gitignore`).
+(carpeta ignorada por git, ver `.gitignore`), ampliado el 2026-10-11 con el
+listado de ventas que destrabó la categoría de los productos (Sección 5.1).
 
 ---
 
@@ -43,10 +46,23 @@ extensión:
 | `Cambio_de_precios_xrp.csv` | CSV `;` + cp1252 | 10.325 filas |
 | `Mantenimiento_de_Proveedores_.csv` | CSV `;` + cp1252 | 62 filas |
 | `Consulta_de_stock_xrp.xls` | **HTML** (`<table>`), no Excel | 12.725 filas |
+| `Listado_ventas_*.xls` | **SpreadsheetML** (XML de Excel 2003) | 6.528 filas |
 | `Ventas_de_Productos.xls` | **SpreadsheetML** (XML de Excel 2003) | 375 filas |
 
 Los `.xls` no se abren con `xlrd` ni `openpyxl`: uno es HTML y el otro XML.
-Cada uno necesita su propio lector.
+Cada uno necesita su propio lector (`fuentes.leer_tabla_html` y
+`fuentes.leer_spreadsheetml`).
+
+Los dos SpreadsheetML son el mismo reporte —*Ventas de Productos*— exportado
+con distinto filtro: el POS lo deja filtrar por sucursal y por rango de fechas,
+y cada corrida cubre los productos que se vendieron en ese recorte. El ETL lee
+**todos** los que encuentre y los une, porque la categoría es un atributo del
+producto y no de la sucursal: cuantos más listados haya, más catálogo queda
+categorizado.
+
+Ninguno de los dos usa `ss:Index` para omitir celdas vacías, que es lo que
+haría peligroso el parseo posicional: una celda salteada correría todas las
+columnas siguientes en silencio.
 
 ### 2.2 Entidades HTML
 
@@ -110,6 +126,15 @@ El export trae también `Stk.Min.(U)` y `Stk.Máx.(U)` definidos en 12.268 filas
 `categorias_xrp.csv` viene limpio: 267 filas, 14 raíces (`idparent = 0`), cero
 jerarquías huérfanas, cero filas malformadas.
 
+Trae además dos columnas que no van al destino pero son la clave del cruce con
+productos: `depto` y `catego`. **`catego` es la ruta completa de la categoría**
+(`ALMACEN, BEBIDAS`), con exactamente la misma forma que la columna `Categoría`
+del listado de ventas — por eso el cruce es una igualdad directa y no hay que
+partir ni normalizar nada.
+
+`denom` **no** sirve para ese cruce: 38 nombres se repiten entre departamentos
+(`BEBIDAS` existe en `ALMACEN` y en `LIMPIEZA`). `catego` es único en las 267.
+
 ---
 
 ## 3. Mapeo por entidad
@@ -141,18 +166,38 @@ Más el proveedor sintético de la decisión 4.2.
 
 ### 3.3 `productos.csv`
 
+Origen principal: `Cambio_de_precios_xrp.csv`. Es el único slice que cruza
+varios exports, porque el maestro de precios no trae ni la categoría ni el id
+del proveedor.
+
 | Destino | Origen | Transformación |
 |---|---|---|
-| `producto_id` | — | generado por el ETL, estable por `sku` |
-| `sku` | `Cód.Barra` | ver 2.3 |
+| `producto_id` | `Cód.Barra` | ver 2.3 |
+| `sku` | `Cód.Barra` | mismo valor que `producto_id` |
 | `nombre` | `Denominación` | reparar `&amp;` |
-| `categoria_id` | — | **sin resolver, ver Sección 5** |
+| `categoria_id` | `Categoría` del listado → `catego` de categorías | ver 2.6; sin match, decisión 4.7 |
 | `proveedor_id` | `Proveedor` | matcheo exacto por nombre, ver 2.4 |
-| `unidad_medida` | `Presentación` / `Empaque` | a definir al implementar |
-| `precio_costo` | `Costo c/IVA` | normalizar separador decimal |
-| `precio_venta` | `Pr.Vta` | normalizar separador decimal |
+| `unidad_medida` | `Presentación` | último token (`1x Kgr` → `KG`), ver 4.8 |
+| `precio_costo` | `Costo c/IVA` | sacar la coma de miles, sin redondear |
+| `precio_venta` | `Pr.Vta` | sacar la coma de miles, sin redondear |
 | `lead_time_dias` | — | default, ver 4.3 |
 | `activo` | `Habilitación` | ver 4.5 |
+
+**Los precios no se redondean a centavos.** El POS los declara con cinco
+decimales (`1,428.57400`) y el `BigDecimal` del backend parsea la cadena
+completa: recortarla sería un ajuste silencioso sobre las 10.000 filas del
+catálogo, que es justo lo que este pipeline evita.
+
+**Se descarta la fila sin precio.** 40 productos no tienen `Pr.Vta` y 4 no
+tienen `Costo c/IVA` (41 filas en total). El backend los parsea con
+`BigDecimal`, que no tolera un vacío: con uno solo, no arranca. Un 0 inventado
+tampoco sirve, porque distorsiona el capital inmovilizado y la clasificación
+ABC.
+
+**Se descarta el producto cuyo proveedor no resuelve.** No se cae al proveedor
+de la decisión 4.2: eso le cambiaría el lead time en silencio, y de ahí sale el
+punto de pedido. Sobre el export real no se descartó ninguno —los 10.325
+resuelven, como anticipaba 2.4.
 
 ### 3.4 `inventario.csv`
 
@@ -184,13 +229,14 @@ fecha. Se recibe por parámetro y, si no se indica, se cae a la fecha de
 modificación del archivo. En ambos casos el reporte deja asentado qué fecha
 usó y de dónde salió, en vez de elegirla en silencio.
 
-**Las sucursales son una suposición pendiente de confirmar.** El export nombra
+**Las sucursales se corresponden por volumen.** El export nombra
 `Administración Central Alem` (10.148 filas) y `Sucursal Santa Cruz` (2.577),
-pero `data/csv/sucursales.csv` todavía tiene los nombres **simulados** (Centro,
-Norte, Sur). La correspondencia se infirió por volumen: la unidad más grande se
-mapea a la sucursal 1. Un stock cargado en la sucursal equivocada no falla,
-simplemente recomienda mal, así que hay que confirmarla antes de volcar el
-inventario a `data/csv/` (ver Sección 5.2).
+pero `sucursales.csv` tiene los nombres **simulados** (Centro, Norte, Sur), así
+que la correspondencia se infirió por volumen: la unidad más grande se mapea a
+la sucursal 1. No se puede verificar contra los nombres, y por decisión del
+usuario (2026-10-11) queda así — ver Sección 5.2, donde está el razonamiento
+completo. La consecuencia si estuviera invertida sigue en pie: un stock cargado
+en la sucursal equivocada no falla, simplemente recomienda mal.
 
 ---
 
@@ -274,35 +320,73 @@ Se evaluó derivar los umbrales de categoría de las columnas `Stk.Min.(U)` y
 `Stk.Máx.(U)` del export de stock. Se descartó: son por producto y por
 sucursal, mientras que los parámetros de InventoryIQ son por categoría.
 
+### 4.7 Los productos sin categoría van a "No Categorizado"
+
+El listado de ventas trae la categoría de los productos que se vendieron, no
+la de todo el catálogo: quedan **3.861 productos sin categoría**, de los cuales
+sólo **599 tienen stock**.
+
+No se inventa una categoría. `categorias_xrp.csv` ya declara `idcate = 0,
+No Categorizado`, y el slice de categorías la emite como una raíz más: el
+centinela **existe en el origen**, igual que el proveedor de la decisión 4.2.
+
+Consecuencia aceptada: esos productos comparten umbral de sobrestock y
+cobertura extra como cualquier otra categoría (decisión 4.4), y se corrigen
+desde Administración. Los 599 con stock entran al sistema y se pueden reponer;
+el resto queda inerte, sin stock ni ventas que disparen nada.
+
+Si el export de categorías no trajera la categoría 0, los productos sin
+categoría **se descartan** en vez de emitirse: una referencia colgada no
+rompería esa fila, rompería el arranque del backend.
+
+### 4.8 La unidad de medida sale de `Presentación`
+
+El POS no la declara como campo. Viene al final de `Presentación`, en su propia
+nomenclatura: `1x1 Un`, `1x Kgr`, `1x700 ml`. Se traduce al vocabulario del
+dataset simulado (`UN`, `KG`, `LT`, `ML`, `GR`).
+
+7 filas traen `1x` a secas, sin unidad. No se descartan: se registran como `UN`
+y el reporte lo dice. `Product.unitOfMeasure` hoy no alimenta ningún cálculo —
+el dominio lo transporta y no lo lee nadie—, así que perder el producto costaría
+más que arrastrar un default.
+
+Se descartó usar `Empaque` (10.324 de 10.325 filas dicen `Und`, no distingue
+nada) y `UxB` (es unidades por bulto, no unidad de medida).
+
 ---
 
 ## 5. Decisiones pendientes
 
-### 5.1 La categoría de los productos
+### 5.1 La categoría de los productos — RESUELTA (2026-10-11)
 
-**Es el bloqueante del ETL de productos.** `productos.csv` exige un
-`categoria_id` que apunte a una categoría existente, y la carga es todo-o-nada.
+Era el bloqueante del ETL de productos: `productos.csv` exige un `categoria_id`
+que apunte a una categoría existente, y la carga es todo-o-nada. Ni
+`Cambio_de_precios_xrp.csv` (24 columnas) ni `Consulta_de_stock_xrp.xls` (27
+columnas) traen la categoría.
 
-Ni `Cambio_de_precios_xrp.csv` (24 columnas) ni `Consulta_de_stock_xrp.xls` (27
-columnas) traen la categoría del producto.
+El único export que la trae es el reporte **Ventas de Productos**, y el
+relevamiento original lo descartó por cobertura: la corrida disponible cubría
+375 de 10.325 productos (3,6%). Lo que no se había probado es que el POS deja
+**filtrar ese reporte por sucursal y por rango de fechas**. Una corrida con el
+rango completo pasa de 375 filas a **6.528**.
 
-El único export que la trae es **`Ventas_de_Productos.xls`**, que además es el
-de mejor calidad para este fin:
+Cobertura con esa corrida, cruzada por `Barra` contra el maestro de precios:
 
-- Columnas `Departamento` y `Categoría` (con ruta completa, p. ej. `ALMACEN,
-  BEBIDAS`), más `Barra` para unir contra el catálogo de precios.
-- 98 categorías distintas, y sólo 1 fila sin categoría.
-- Trae además `Id.Prov.` numérico, que evitaría el matcheo por nombre.
+| | Productos | % |
+|---|---|---|
+| Catálogo completo | 10.325 | 100% |
+| Con categoría | 6.464 | 62,6% |
+| Sin categoría | 3.861 | 37,4% |
+| **Con stock y con categoría** | **4.732** | **88,8% de los 5.331 con stock** |
+| **Con stock y sin categoría** | **599** | 11,2% de los que tienen stock |
 
-**Su limitación:** cubre **375 de 10.325 productos (3,6%)**. Es un listado de
-ventas de un período, no un maestro de productos.
+El 37,4% suena peor de lo que es: son productos que nunca se vendieron **y**
+no tienen stock. Los que importan para reponer son los 5.331 con stock, y de
+esos quedan categorizados casi 9 de cada 10. Los 599 restantes se resuelven con
+la decisión 4.7.
 
-Lo que demuestra es que **el POS puede exportar la categoría por producto**. El
-camino natural es generar ese mismo reporte con un rango de fechas mucho más
-amplio, o encontrar en XRP un listado de productos que la incluya.
-
-Mientras tanto, las entidades `categorias`, `proveedores` e `inventario` se
-pueden migrar sin depender de esto.
+La cobertura sube sola sacando el mismo reporte con el filtro de la otra
+sucursal: el ETL lee todos los listados que encuentre y los une (Sección 2.1).
 
 ### 5.2 Los nombres de las sucursales
 
@@ -332,10 +416,10 @@ La correspondencia por volumen queda firme, y `sucursales.csv` se arrastra tal
 cual al catálogo real. Tiene además una ventaja no buscada: los nombres de las
 sucursales del negocio no quedan en un repositorio público.
 
-### 5.3 El historial de ventas
+### 5.3 El historial de ventas — el único bloqueante que queda
 
-Descubierto al armar el catálogo completo, y es el hueco más grande de los
-tres.
+Descubierto al armar el catálogo completo, y con productos ya implementado es
+**lo único que separa al sistema de correr con datos reales**.
 
 El backend lee seis CSV, y `ventas.csv` es uno de ellos. No tiene fuente
 migrada: ninguno de los exports relevados trae ventas diarias por producto y
@@ -348,17 +432,43 @@ la recomendación. Un catálogo real con ventas simuladas no produce
 recomendaciones malas: no produce ninguna, porque las ventas versionadas
 apuntan a productos que en el catálogo real no existen.
 
-Verificado con el comando de migración, simulando el `productos.csv` que
-producirá el slice bloqueado:
+Verificado con el comando de migración sobre el catálogo real ya generado:
 
 ```
 ventas.csv.producto_id -> productos.csv.producto_id:
   26.070 filas apuntan a 22 valores inexistentes
 ```
 
-O sea: **conseguir el export de categorías destraba el ETL, pero no alcanza
-para correr el sistema con datos reales.** Hace falta también un export de
-ventas diarias.
+Es la única violación que queda. Los otros cinco archivos cierran entre sí.
+
+**Hay una fuente, pero no es un export.** En la pantalla *Ventas de Productos*,
+al abrir el gráfico de ventas de un producto, el POS pide por XHR la serie
+diaria de ese producto y responde XML:
+
+```xml
+<record fecha="1784170800000" valor="2.000" costosini="3443.520"
+        prevta="4297.520" rentabilidad="854.000"/>
+```
+
+Mapea 1:1 contra `ventas.csv`: `fecha` es epoch en milisegundos, `valor` son
+las unidades vendidas y `prevta` el importe. La serie arranca en 2021, de sobra
+para el ADS. La sucursal no viaja en el XML: sale del filtro con el que se abrió
+la pantalla, igual que el listado de categorías.
+
+El problema es que el gráfico se abre **de a un producto**: no hay ningún botón
+que exporte la serie de todos. Las opciones, en orden de preferencia:
+
+1. **Encontrar el reporte que ya lo exporte.** Sería lo más barato y lo más
+   estable. No se relevó todavía si XRP lo tiene.
+2. **Replicar el XHR desde el pipeline**, un request por producto. Es el
+   camino conocido, y tiene costos reales que hay que asumir a propósito:
+   son ~6.500 requests contra el servidor del propio negocio (conviene correrlo
+   fuera del horario de atención y secuencialmente), la cookie de sesión vence
+   y el proceso tiene que cortar ruidosamente en vez de seguir guardando
+   respuestas vacías, y hay que repetirlo por cada sucursal.
+
+Mientras no haya ninguna de las dos, el catálogo real **no se puede usar**: el
+`migrar` lo dice y falla con código distinto de cero.
 
 ---
 
@@ -381,6 +491,13 @@ su evidencia en la Sección 2:
 | Proveedor centinela `Sin Proveedor` | 2.4 |
 | Stock negativo, vacío y no numérico | 2.5 |
 | `.xls` que es HTML, y `.xls` que es SpreadsheetML | 2.1 |
+| Entidad `&#160;` (espacio duro numérico) | 2.1 |
+| Fila del listado sin categoría | 5.1 |
+| Ruta de categoría que el export de categorías no conoce | 2.6 |
+| Producto sin `Pr.Vta` / sin `Costo c/IVA` | 3.3 |
+| `Cód.Barra` vacío y duplicado | 2.3 |
+| `Presentación` sin unidad reconocible (`1x`) | 4.8 |
+| Proveedor del maestro de precios que no está registrado | 2.4 |
 
 Esto permite que los tests corran en CI sin datos reales, que cada defecto
 quede documentado como un caso con nombre, y que el repositorio siga siendo
@@ -414,13 +531,25 @@ Lo imponen las dependencias:
    `CsvInventoryRepositoryAdapter` real la carga — lo que también prueba el
    ajuste, porque el invariante `currentStock >= 0` de `Inventory` habría
    fallado con cualquier negativo.
-4. **Productos** — bloqueado por la Sección 5.1; depende de 1 y 2.
+4. **Productos** — IMPLEMENTADO. Es el único que cruza cuatro exports:
+   precios (maestro), el listado de ventas (categoría), categorías (resolver la
+   ruta a un id) y proveedores (resolver el nombre a un id). Los tres
+   auxiliares los deriva él mismo de la misma carpeta, con las mismas
+   transformaciones que los otros slices, así que los ids coinciden por
+   construcción y no necesita el catálogo ya generado. Sobre los exports
+   reales: 10.325 leídas, 10.283 emitidas, 42 descartadas (41 sin precio
+   utilizable y 1 sin código de barras), **cero descartadas por proveedor sin
+   correspondencia**, y 3.861 ubicadas en "No Categorizado" por la decisión
+   4.7.
 
 El comando `migrar` arma las cuatro entidades juntas en una carpeta aparte y
 verifica la integridad referencial entre los seis archivos antes de dar el
 catálogo por bueno. Existe porque las entidades **no se pueden migrar de a
 una**: se referencian entre sí, y el backend las carga todo-o-nada. Falla con
-código distinto de cero mientras el conjunto no cierre, que es hoy.
+código distinto de cero mientras el conjunto no cierre, que sigue siendo hoy —
+pero ahora por un único motivo, y es el de la Sección 5.3: `ventas.csv` se
+arrastra del dataset simulado y apunta a productos que en el catálogo real no
+existen.
 
 La salida va a `data/csv-real/`, **no** a `data/csv/`: esta última está
 versionada y el repositorio es público, así que volcar ahí el catálogo real

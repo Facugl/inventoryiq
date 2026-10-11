@@ -186,6 +186,22 @@ Los próximos pasos concretos, en orden de valor para el uso real del sistema:
    restante sólo fallaba por la misma entidad HTML), y aparecieron dos problemas
    no previstos: ningún export trae la categoría del producto para el catálogo
    completo, y el 40% de las filas de stock vienen en negativo.
+
+   **Actualización (2026-10-11):** el pipeline está implementado para las cuatro
+   entidades que salen del POS — categorías, proveedores, inventario y productos.
+   La categoría de los productos se destrabó: el reporte *Ventas de Productos* se
+   puede filtrar por sucursal y por rango de fechas, y con el rango completo pasa
+   de 375 a 6.528 productos, lo que deja con categoría real al 88,8% de los que
+   tienen stock (el resto va a "No Categorizado", decisión 4.7 del doc del ETL).
+
+   **Lo que falta ahora es uno solo, y es el más caro:** el historial de ventas
+   diarias por producto y sucursal. Ningún export lo entrega. El POS sí lo tiene
+   —la pantalla de *Ventas de Productos* grafica la serie diaria de un producto
+   pidiéndola por XHR en XML— pero de a un producto por vez. Mientras no haya un
+   reporte que lo exporte entero, o un proceso que replique ese XHR por producto,
+   el catálogo real no se puede usar: `ventas.csv` se arrastra del dataset
+   simulado y apunta a productos que no existen en el catálogo real. Ver Sección
+   5.3 de `docs/InventoryIQ_ETL_Catalogo.md`.
 2. **README de arranque rápido** en la raíz del repo — **completado** (ver Fase 6).
 3. Recién después, evaluar si conviene avanzar hacia v1.1/v1.2 (alertas configurables,
    multi-sucursal) o directamente hacia v2.0 (ETL real + Data Warehouse), según qué

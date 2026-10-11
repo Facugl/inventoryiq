@@ -1,3 +1,4 @@
+import shutil
 import sys
 from pathlib import Path
 
@@ -39,6 +40,38 @@ def fixture_proveedores_con_sin_proveedor() -> Path:
 def fixture_stock() -> Path:
     """HTML con extensión .xls, como el export de stock del POS."""
     return FIXTURES / "stock_xrp.xls"
+
+
+@pytest.fixture
+def fixture_listado() -> Path:
+    """SpreadsheetML con extensión .xls: el listado de ventas, que es el único
+    export que trae la categoría del producto."""
+    return FIXTURES / "listado_ventas.xls"
+
+
+@pytest.fixture
+def fixture_precios() -> Path:
+    return FIXTURES / "cambio_de_precios_xrp.csv"
+
+
+@pytest.fixture
+def export_pos(tmp_path) -> Path:
+    """Una carpeta de exports con los nombres de archivo que usa el POS.
+
+    Productos es el único slice que lee varios exports y los busca por nombre
+    en su propia carpeta, así que el test necesita esa carpeta armada y no
+    alcanza con pasarle un fixture suelto.
+    """
+    export = tmp_path / "real-export"
+    export.mkdir()
+    for origen, nombre in [
+        (FIXTURES / "cambio_de_precios_xrp.csv", "Cambio_de_precios_xrp.csv"),
+        (FIXTURES / "categorias_xrp.csv", "categorias_xrp.csv"),
+        (FIXTURES / "proveedores_xrp.csv", "Mantenimiento_de_Proveedores_.csv"),
+        (FIXTURES / "listado_ventas.xls", "Listado_ventas.xls"),
+    ]:
+        shutil.copyfile(origen, export / nombre)
+    return export
 
 
 @pytest.fixture

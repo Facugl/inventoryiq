@@ -63,34 +63,51 @@ pantallas sin depender de datos reales.
 
 ### Cargar tu catálogo real
 
-Para reemplazar el catálogo simulado por el real, editá `data/csv/productos.csv`
-y `data/csv/categorias.csv` (mismas columnas, ver `docs/InventoryIQ_Documentacion.md`
-Sección 5) y reiniciá el backend: `docker compose restart backend`.
+El catálogo real **no se carga a mano ni se versiona**: lo produce el pipeline
+ETL de [`etl/`](etl/), que convierte los exports crudos del POS XRP
+(`data/real-export/`, fuera de git) al mismo formato de `data/csv/*.csv` que ya
+consumen los adaptadores del backend — sin tocar el backend ni el dominio.
 
-Antes de exportar desde tu sistema, tené en cuenta:
+```bash
+cd etl && python -m inventoryiq_etl migrar
+```
 
-- **`activo`**: marcá en `False` los productos que ya no vendés — el sistema los
-  ignora en todos los cálculos, no hace falta borrarlos de la planilla.
-- **`categoria_id`**: cada producto tiene que apuntar a una categoría que exista
-  en `categorias.csv`, o el backend falla al arrancar (la carga de estos dos
-  archivos es todo-o-nada: no hay tolerancia a filas individuales rotas, a
-  diferencia de la carga de ventas o inventario desde la pantalla de
-  Administración, que rechaza fila por fila hasta un umbral).
-- **`lead_time_dias`**: tiene que ser un número mayor a 0 en todas las filas.
-  Si hoy no lo llevás registrado por producto, un valor genérico razonable
-  (por ejemplo, el lead time típico de tu proveedor habitual) sirve como
-  punto de partida.
-- **`proveedor_id`**: obligatorio en cada fila y tiene que apuntar a un
-  proveedor que exista en `proveedores.csv` (misma exigencia que `categoria_id`).
-  La pantalla de Proveedores permite listar los proveedores activos y corregir
-  a mano el lead time de cada uno, pero no crearlos — si tu catálogo de
-  proveedores no es el simulado, primero hay que cargar `data/csv/proveedores.csv`
-  a mano o vía script.
+La salida va a `data/csv-real/`, que **está fuera de git a propósito**: este
+repositorio es público y el catálogo real trae costos, márgenes y proveedores
+de un negocio real. `data/csv/` se queda con el dataset simulado, para que
+cualquiera pueda clonar y levantar el sistema. Para apuntar el backend a la
+carpeta real, cambiá el volumen del servicio `backend` en `docker-compose.yml`
+a `./data/csv-real:/app/data/csv` (o fijá `INVENTORYIQ_CSV_BASE_PATH` si lo
+corrés sin Docker) y reiniciá: `docker compose up -d backend`.
 
-Con más de 10.000 filas, cualquier valor faltante o mal tipado en estas columnas
-hace que el backend no arranque — conviene revisar el CSV exportado antes de
-reemplazarlo (por ejemplo, abriéndolo en una planilla y filtrando por celdas
-vacías en `categoria_id`, `proveedor_id` o `lead_time_dias`).
+Las cuatro entidades que salen del POS —categorías, proveedores, productos e
+inventario— están implementadas. **El catálogo todavía no es utilizable por un
+único motivo:** ningún export del POS entrega la venta diaria por producto y
+sucursal, así que `ventas.csv` se arrastra del dataset simulado y apunta a
+productos que en el catálogo real no existen. `migrar` lo detecta, lo dice y
+falla con código distinto de cero en vez de dejarte apuntar el backend a un
+catálogo que no arrancaría. El detalle de qué decidió el pipeline en cada caso
+está en [`etl/README.md`](etl/README.md) y, campo por campo, en
+[`docs/InventoryIQ_ETL_Catalogo.md`](docs/InventoryIQ_ETL_Catalogo.md).
+
+#### Qué exige el backend de cualquier catálogo
+
+Vale tanto para el catálogo simulado como para el que produce el ETL, y explica
+por qué varias decisiones del pipeline son las que son:
+
+- **La carga de `productos.csv` y `categorias.csv` es todo-o-nada**: una sola
+  fila rota y el backend no arranca. No hay tolerancia por fila, a diferencia
+  de la carga de ventas o inventario desde la pantalla de Administración, que
+  rechaza fila por fila hasta un umbral.
+- **`categoria_id`** y **`proveedor_id`** son obligatorios en cada fila y tienen
+  que apuntar a una categoría y a un proveedor que existan en `categorias.csv`
+  y `proveedores.csv`. La pantalla de Proveedores lista los activos y permite
+  corregir el lead time de cada uno a mano, pero no crearlos.
+- **`lead_time_dias`** tiene que ser un número mayor a 0 en todas las filas. El
+  POS no lo registra, así que el ETL aplica un default global corregible desde
+  la pantalla de Proveedores (decisión 4.3 del doc del ETL).
+- **`activo`** en `False` deja el producto fuera de todos los cálculos sin
+  tener que borrarlo de la planilla.
 
 ## Verificación manual
 
@@ -175,9 +192,9 @@ Limitaciones del plan free a tener en cuenta:
 - `docs/InventoryIQ_Arquitectura.md` — arquitectura y flujos **implementados**, auditados contra el código.
 - `docs/InventoryIQ_Roadmap.md` — estado de avance por fase y próximos pasos.
 - `docs/InventoryIQ_ETL_Catalogo.md` — relevamiento de los exports reales del POS,
-  decisiones del pipeline y mapeo campo por campo. Implementado para categorías,
-  proveedores e inventario (ver `etl/README.md`); productos sigue bloqueado porque
-  ningún export trae la categoría del producto para el catálogo completo.
+  decisiones del pipeline y mapeo campo por campo. Las cuatro entidades que salen
+  del POS están implementadas (ver `etl/README.md`); falta el historial de ventas
+  diarias, que ningún export entrega.
 - `docs/README_datos_simulados.md` — cómo se generaron los CSV de prueba.
 - **Swagger UI** (con el backend corriendo) — http://localhost:8080/swagger-ui/index.html:
   documentación interactiva de cada endpoint (parámetros, request/response, "Try it out"

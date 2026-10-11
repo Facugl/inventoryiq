@@ -12,8 +12,9 @@ campo están en [`../docs/InventoryIQ_ETL_Catalogo.md`](../docs/InventoryIQ_ETL_
 |---|---|
 | `categorias.csv` | implementado |
 | `proveedores.csv` | implementado |
-| `inventario.csv` | implementado — la correspondencia de sucursales es una suposición, ver Sección 5.2 del doc |
-| `productos.csv` | bloqueado — ningún export trae la categoría del producto para el catálogo completo (Sección 5 del doc) |
+| `inventario.csv` | implementado — la correspondencia de sucursales se infiere por volumen, decidido así en la Sección 5.2 del doc |
+| `productos.csv` | implementado — 62,6% del catálogo queda con categoría real y el resto va a "No Categorizado" (decisión 4.7) |
+| `ventas.csv` | **sin fuente** — ningún export trae la venta diaria por producto y sucursal (Sección 5.3 del doc). Es lo único que impide usar el catálogo real |
 
 ## Uso
 
@@ -21,6 +22,11 @@ campo están en [`../docs/InventoryIQ_ETL_Catalogo.md`](../docs/InventoryIQ_ETL_
 python -m inventoryiq_etl migrar            # arma el catálogo entero y lo verifica
 python -m inventoryiq_etl entidad categorias   # una sola, a una carpeta temporal
 ```
+
+Los listados de ventas (`Listado*.xls`, `Ventas_de_Productos*.xls`) aportan la
+categoría de los productos. Se leen **todos** los que haya en la carpeta y se
+unen: el POS exporta ese reporte filtrado por sucursal, y cuantos más listados
+haya, más catálogo queda categorizado.
 
 `migrar` lee de `../data/real-export/` y escribe en `../data/csv-real/`, que
 está fuera de git. **No escribe en `../data/csv/`**: esa carpeta está

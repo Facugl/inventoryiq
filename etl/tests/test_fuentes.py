@@ -1,6 +1,11 @@
 """El lector de exports del POS: encoding, separador y entidades HTML."""
 
-from inventoryiq_etl.fuentes import leer_csv_pos, reparar_entidades
+from inventoryiq_etl.fuentes import (
+    leer_csv_pos,
+    leer_spreadsheetml,
+    parsear_decimal,
+    reparar_entidades,
+)
 
 
 class TestRepararEntidades:
@@ -52,3 +57,49 @@ class TestLeerCsvPos:
         _, desconocidas = leer_csv_pos(fixture_categorias)
 
         assert desconocidas == set()
+
+
+class TestLeerSpreadsheetml:
+    """El POS llama .xls a dos formatos, y este es el XML de Excel 2003: ni
+    xlrd ni openpyxl lo abren."""
+
+    def test_usa_la_cabecera_y_saltea_la_decoracion(self, fixture_listado):
+        filas = leer_spreadsheetml(fixture_listado)
+
+        assert filas[0]["Barra"] == "7790000000001"
+        assert filas[0]["Categoría"] == "LACTEOS"
+        assert not any(f.get("Barra") == "Empresa:UN NEGOCIO" for f in filas)
+
+    def test_ignora_las_filas_de_otro_ancho(self, fixture_listado):
+        """El pie de totales tiene tres celdas; rellenarlo correría columnas."""
+        filas = leer_spreadsheetml(fixture_listado)
+
+        assert len(filas) == 6
+        assert all(len(f) == 9 for f in filas)
+
+    def test_desescapa_las_entidades_xml(self, fixture_listado):
+        """En XML `&amp;` es escapado legítimo, no el defecto del CSV: hay que
+        desescaparlo igual, o el nombre llega con la entidad cruda."""
+        filas = leer_spreadsheetml(fixture_listado)
+        por_barra = {f["Barra"]: f for f in filas}
+
+        assert por_barra["7790000000002"]["Producto"] == "QUESO & CREMA"
+        assert por_barra["7790000000003"]["Producto"] == "YOGUR BEBIBLE"
+
+
+class TestParsearDecimal:
+    def test_saca_la_coma_de_miles(self):
+        assert str(parsear_decimal("2,196.15000")) == "2196.15000"
+
+    def test_conserva_la_precision_del_pos(self):
+        """Redondear a centavos sería un ajuste silencioso sobre 10.000 filas."""
+        assert str(parsear_decimal("1,428.57400")) == "1428.57400"
+
+    def test_distingue_vacio_de_cero(self):
+        """Un 0 inventado distorsiona el capital inmovilizado y el ABC."""
+        assert parsear_decimal("") is None
+        assert parsear_decimal("  ") is None
+        assert str(parsear_decimal("0.00000")) == "0.00000"
+
+    def test_devuelve_none_si_no_es_un_numero(self):
+        assert parsear_decimal("s/d") is None

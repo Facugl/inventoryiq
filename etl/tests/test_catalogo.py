@@ -81,14 +81,15 @@ class TestMigrar:
 
         resultado = migrar(desde, tmp_path / "salida", catalogo_completo, FECHA)
 
-        assert {r.entidad for r in resultado.reportes} == {"categorias", "proveedores", "inventario"}
+        assert {r.entidad for r in resultado.reportes} == {
+            "categorias", "proveedores", "productos", "inventario",
+        }
         assert set(resultado.arrastrados) == {"sucursales.csv", "ventas.csv"}
         assert (tmp_path / "salida" / "categorias.csv").is_file()
 
-    def test_hoy_el_catalogo_no_cierra_porque_falta_productos(
+    def test_sin_el_export_de_precios_falta_productos(
         self, tmp_path, fixture_categorias, fixture_proveedores, fixture_stock, catalogo_completo
     ):
-        """Es el estado real del proyecto, y el comando tiene que decirlo."""
         desde = tmp_path / "export"
         desde.mkdir()
         (desde / "categorias_xrp.csv").write_bytes(fixture_categorias.read_bytes())
@@ -100,6 +101,38 @@ class TestMigrar:
         assert not resultado.sirve
         assert "productos.csv" in resultado.faltantes
         assert "NO UTILIZABLE" in resultado.resumen()
+
+    def test_hoy_el_catalogo_no_cierra_porque_ventas_no_tiene_fuente(
+        self, tmp_path, export_pos, fixture_stock, catalogo_completo
+    ):
+        """Es el estado real del proyecto, y el comando tiene que decirlo.
+
+        Con productos implementado, el único archivo sin fuente en el POS es
+        `ventas.csv`: se arrastra del dataset simulado y apunta a productos
+        que en el catálogo real no existen (Sección 5.3 del documento)."""
+        (export_pos / "Consulta_de_stock_xrp.xls").write_bytes(fixture_stock.read_bytes())
+
+        resultado = migrar(export_pos, tmp_path / "salida", catalogo_completo, FECHA)
+
+        assert resultado.faltantes == []
+        assert not resultado.sirve
+        rota = [v for v in resultado.violaciones if v.clave.archivo == "ventas.csv"]
+        assert rota, "ventas.csv tendría que quedar colgado contra el catálogo real"
+
+    def test_productos_se_genera_antes_que_inventario(
+        self, tmp_path, export_pos, fixture_stock, catalogo_completo
+    ):
+        """El orden no es cosmético: inventario descarta el stock de productos
+        que no están en el catálogo, y para eso necesita el catálogo escrito."""
+        (export_pos / "Consulta_de_stock_xrp.xls").write_bytes(fixture_stock.read_bytes())
+
+        resultado = migrar(export_pos, tmp_path / "salida", catalogo_completo, FECHA)
+        entidades = [r.entidad for r in resultado.reportes]
+        inventario = next(r for r in resultado.reportes if r.entidad == "inventario")
+
+        assert entidades.index("productos") < entidades.index("inventario")
+        assert not any("integridad referencial sin verificar" in i.motivo
+                       for i in inventario.ajustes)
 
     def test_avisa_si_falta_un_export_en_vez_de_escribir_a_medias(self, tmp_path, catalogo_completo):
         desde = tmp_path / "export"
