@@ -327,10 +327,38 @@ salida natural es reemplazarlos por los reales, conservando los ids 1 y 2 para
 no invalidar las recomendaciones ya guardadas en Postgres. El POS no exporta
 direcciones de sucursal.
 
-**Decisión del usuario (2026-10-10): dejarlo como está por ahora.** El riesgo
-está contenido mientras el inventario no se vuelque a `data/csv/`; si se
-volcara con la correspondencia al revés, el stock quedaría cargado en la
-sucursal equivocada, y eso no falla: recomienda mal.
+**Decisión del usuario (2026-10-11): se siguen usando los nombres simulados.**
+La correspondencia por volumen queda firme, y `sucursales.csv` se arrastra tal
+cual al catálogo real. Tiene además una ventaja no buscada: los nombres de las
+sucursales del negocio no quedan en un repositorio público.
+
+### 5.3 El historial de ventas
+
+Descubierto al armar el catálogo completo, y es el hueco más grande de los
+tres.
+
+El backend lee seis CSV, y `ventas.csv` es uno de ellos. No tiene fuente
+migrada: ninguno de los exports relevados trae ventas diarias por producto y
+sucursal, que es la granularidad que necesita. `Ventas_de_Productos.xls` trae
+cantidades, pero agregadas por período y sólo para 375 productos.
+
+No es un detalle de completitud. Las ventas alimentan el ADS (venta promedio
+diaria), y de ahí salen el punto de pedido, la cobertura, el sobrestock y toda
+la recomendación. Un catálogo real con ventas simuladas no produce
+recomendaciones malas: no produce ninguna, porque las ventas versionadas
+apuntan a productos que en el catálogo real no existen.
+
+Verificado con el comando de migración, simulando el `productos.csv` que
+producirá el slice bloqueado:
+
+```
+ventas.csv.producto_id -> productos.csv.producto_id:
+  26.070 filas apuntan a 22 valores inexistentes
+```
+
+O sea: **conseguir el export de categorías destraba el ETL, pero no alcanza
+para correr el sistema con datos reales.** Hace falta también un export de
+ventas diarias.
 
 ---
 
@@ -386,7 +414,19 @@ Lo imponen las dependencias:
    `CsvInventoryRepositoryAdapter` real la carga — lo que también prueba el
    ajuste, porque el invariante `currentStock >= 0` de `Inventory` habría
    fallado con cualquier negativo.
-4. **Productos** — bloqueado por la Sección 5; depende de 1 y 2.
+4. **Productos** — bloqueado por la Sección 5.1; depende de 1 y 2.
+
+El comando `migrar` arma las cuatro entidades juntas en una carpeta aparte y
+verifica la integridad referencial entre los seis archivos antes de dar el
+catálogo por bueno. Existe porque las entidades **no se pueden migrar de a
+una**: se referencian entre sí, y el backend las carga todo-o-nada. Falla con
+código distinto de cero mientras el conjunto no cierre, que es hoy.
+
+La salida va a `data/csv-real/`, **no** a `data/csv/`: esta última está
+versionada y el repositorio es público, así que volcar ahí el catálogo real
+publicaría costos, márgenes y proveedores. El backend se apunta a la carpeta
+real con `INVENTORYIQ_CSV_BASE_PATH`, y `data/csv/` sigue siendo el dataset
+simulado con el que cualquiera puede clonar y levantar el sistema.
 
 > Nota del slice 1: el catálogo real **no contiene el `categoria_id` 14** que
 > usan los productos simulados, así que `data/csv/categorias.csv` no se puede

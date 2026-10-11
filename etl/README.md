@@ -18,14 +18,19 @@ campo están en [`../docs/InventoryIQ_ETL_Catalogo.md`](../docs/InventoryIQ_ETL_
 ## Uso
 
 ```bash
-python -m inventoryiq_etl categorias --dry-run    # informa sin escribir
-python -m inventoryiq_etl proveedores --dry-run
-python -m inventoryiq_etl inventario --dry-run
-python -m inventoryiq_etl categorias              # escribe en ../data/csv/
+python -m inventoryiq_etl migrar            # arma el catálogo entero y lo verifica
+python -m inventoryiq_etl entidad categorias   # una sola, a una carpeta temporal
 ```
 
-Lee de `../data/real-export/` y escribe en `../data/csv/` por defecto;
-`--desde` y `--hasta` los cambian.
+`migrar` lee de `../data/real-export/` y escribe en `../data/csv-real/`, que
+está fuera de git. **No escribe en `../data/csv/`**: esa carpeta está
+versionada y el repositorio es público, así que el catálogo real —con costos,
+márgenes y proveedores— no puede terminar ahí. El backend se apunta a la
+carpeta real con `INVENTORYIQ_CSV_BASE_PATH`.
+
+Las entidades no se migran de a una: se referencian entre sí y el backend las
+carga todo-o-nada. Por eso `migrar` verifica la integridad referencial entre
+los seis archivos y **falla** mientras el conjunto no cierre.
 
 Siempre imprime un reporte de qué leyó, qué emitió, qué descartó y qué ajustó.
 Eso no es decorativo: varias decisiones del pipeline modifican filas (por

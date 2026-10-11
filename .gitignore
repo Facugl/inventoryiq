@@ -75,3 +75,9 @@ desktop.ini
 # y, si necesita datos de ejemplo versionados, usar fixtures sintéticos
 # que reproduzcan los defectos de formato, no los exports reales.
 data/real-export/
+
+# Salida del ETL con el catálogo real: mismos datos que los exports, sólo que
+# ya convertidos. data/csv/ sí se versiona, pero con el dataset SIMULADO —
+# por eso el catálogo real va a una carpeta aparte y el backend se apunta ahí
+# con INVENTORYIQ_CSV_BASE_PATH.
+data/csv-real/

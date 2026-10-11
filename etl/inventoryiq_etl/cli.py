@@ -1,55 +1,80 @@
-"""Punto de entrada: python -m inventoryiq_etl <entidad>"""
+"""Punto de entrada: python -m inventoryiq_etl <comando>"""
 
 import argparse
 import sys
+import tempfile
+from datetime import date
 from pathlib import Path
 
-from . import categorias, inventario, proveedores
-
-# Cada entidad declara su archivo de origen y su archivo de destino. A medida
-# que se agreguen proveedores, inventario y productos, se suman acá.
-ENTIDADES = {
-    "categorias": (categorias.convertir, "categorias_xrp.csv", "categorias.csv"),
-    "proveedores": (proveedores.convertir, "Mantenimiento_de_Proveedores_.csv", "proveedores.csv"),
-    "inventario": (inventario.convertir, "Consulta_de_stock_xrp.xls", "inventario.csv"),
-}
+from . import catalogo
 
 RAIZ = Path(__file__).resolve().parents[2]
+EXPORT_POS = RAIZ / "data" / "real-export"
+DATASET_SIMULADO = RAIZ / "data" / "csv"
+
+# El catálogo real NO va a data/csv: esa carpeta está versionada y el
+# repositorio es público. Volcarlo ahí publicaría los costos, los márgenes y
+# los proveedores del negocio — exactamente lo que se protegió al ignorar
+# data/real-export. Va a una carpeta aparte, ignorada por git, y el backend se
+# apunta ahí con INVENTORYIQ_CSV_BASE_PATH.
+CATALOGO_REAL = RAIZ / "data" / "csv-real"
+
+
+def _fecha(valor: str) -> date:
+    return date.fromisoformat(valor)
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="inventoryiq-etl",
-        description="Convierte los exports del POS al formato de data/csv/.",
+        description="Convierte los exports del POS al formato de CSV que lee el backend.",
     )
-    parser.add_argument("entidad", choices=sorted(ENTIDADES), help="qué convertir")
-    parser.add_argument("--desde", type=Path, default=RAIZ / "data" / "real-export",
-                        help="carpeta con los exports crudos del POS")
-    parser.add_argument("--hasta", type=Path, default=RAIZ / "data" / "csv",
-                        help="carpeta de destino, en el formato que lee el backend")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="informa qué haría, sin escribir el destino")
+    sub = parser.add_subparsers(dest="comando", required=True)
+
+    una = sub.add_parser("entidad", help="convierte una sola entidad")
+    una.add_argument("cual", choices=sorted(catalogo.ENTIDADES_MIGRADAS))
+    una.add_argument("--desde", type=Path, default=EXPORT_POS)
+    una.add_argument("--hasta", type=Path, default=None,
+                     help="por defecto, una carpeta temporal: una entidad suelta no "
+                          "produce un catálogo utilizable")
+
+    todo = sub.add_parser("migrar", help="genera el catálogo completo y verifica que cierre")
+    todo.add_argument("--desde", type=Path, default=EXPORT_POS)
+    todo.add_argument("--hasta", type=Path, default=CATALOGO_REAL)
+    todo.add_argument("--simulados", type=Path, default=DATASET_SIMULADO,
+                      help="de dónde salen los archivos que todavía no tienen fuente en el POS")
+    todo.add_argument("--fecha-snapshot", type=_fecha, default=None,
+                      help="fecha del inventario (ISO). Por defecto, la de modificación del export")
+
     args = parser.parse_args(argv)
 
-    convertir, nombre_origen, nombre_destino = ENTIDADES[args.entidad]
-    origen = args.desde / nombre_origen
-    if not origen.is_file():
-        print(f"No existe el export de origen: {origen}", file=sys.stderr)
+    if args.comando == "entidad":
+        convertir, nombre_origen, nombre_destino = catalogo.ENTIDADES_MIGRADAS[args.cual]
+        origen = args.desde / nombre_origen
+        if not origen.is_file():
+            print(f"No existe el export de origen: {origen}", file=sys.stderr)
+            return 2
+
+        hasta = args.hasta or Path(tempfile.mkdtemp())
+        reporte = convertir(origen, hasta / nombre_destino)
+        print(reporte.resumen())
+        print(f"destino: {hasta / nombre_destino}")
+        return 0 if reporte.emitidas else 1
+
+    if not args.desde.is_dir():
+        print(f"No existe la carpeta de exports: {args.desde}", file=sys.stderr)
         return 2
 
-    destino = args.hasta / nombre_destino
-    if args.dry_run:
-        # Se escribe igual, pero a un descarte, para que el reporte sea el real
-        # y no una estimación: sobreescribir data/csv sin querer es caro.
-        import tempfile
+    resultado = catalogo.migrar(args.desde, args.hasta, args.simulados, args.fecha_snapshot)
+    print(resultado.resumen())
+    print(f"\ndestino: {resultado.destino}")
 
-        destino = Path(tempfile.mkdtemp()) / nombre_destino
+    if resultado.sirve:
+        print("\nPara levantar el backend contra este catálogo:")
+        print(f"  INVENTORYIQ_CSV_BASE_PATH={resultado.destino}")
+    else:
+        print("\nNo apuntes el backend a este catálogo: no arrancaría.")
 
-    reporte = convertir(origen, destino)
-    print(reporte.resumen())
-    print(f"{'(dry-run) ' if args.dry_run else ''}destino: {destino}")
-
-    # Los descartes no son un fallo del proceso: son el resultado, y por eso
-    # salen por el reporte. El código de salida distinto de cero se reserva
-    # para no haber podido producir nada.
-    return 0 if reporte.emitidas else 1
+    # Falla cuando el catálogo no sirve. Es la razón de ser del comando: que
+    # el problema aparezca ahora y no al arrancar la aplicación.
+    return 0 if resultado.sirve else 1
