@@ -12,7 +12,7 @@ campo están en [`../docs/InventoryIQ_ETL_Catalogo.md`](../docs/InventoryIQ_ETL_
 |---|---|
 | `categorias.csv` | implementado |
 | `proveedores.csv` | implementado |
-| `inventario.csv` | implementado |
+| `inventario.csv` | implementado — la correspondencia de sucursales es una suposición, ver Sección 5.2 del doc |
 | `productos.csv` | bloqueado — ningún export trae la categoría del producto para el catálogo completo (Sección 5 del doc) |
 
 ## Uso

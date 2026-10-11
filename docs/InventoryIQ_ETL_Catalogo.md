@@ -190,8 +190,7 @@ pero `data/csv/sucursales.csv` todavía tiene los nombres **simulados** (Centro,
 Norte, Sur). La correspondencia se infirió por volumen: la unidad más grande se
 mapea a la sucursal 1. Un stock cargado en la sucursal equivocada no falla,
 simplemente recomienda mal, así que hay que confirmarla antes de volcar el
-inventario a `data/csv/` — y conviene que `sucursales.csv` pase a tener los
-nombres reales.
+inventario a `data/csv/` (ver Sección 5.2).
 
 ---
 
@@ -277,7 +276,9 @@ sucursal, mientras que los parámetros de InventoryIQ son por categoría.
 
 ---
 
-## 5. Decisión pendiente: la categoría de los productos
+## 5. Decisiones pendientes
+
+### 5.1 La categoría de los productos
 
 **Es el bloqueante del ETL de productos.** `productos.csv` exige un
 `categoria_id` que apunte a una categoría existente, y la carga es todo-o-nada.
@@ -302,6 +303,34 @@ amplio, o encontrar en XRP un listado de productos que la incluya.
 
 Mientras tanto, las entidades `categorias`, `proveedores` e `inventario` se
 pueden migrar sin depender de esto.
+
+### 5.2 Los nombres de las sucursales
+
+`data/csv/sucursales.csv` tiene tres sucursales con **nombres y direcciones
+inventados**, heredados de los datos simulados:
+
+```
+1,Sucursal Centro,"Av. San Martín 1450, Santiago del Estero",True
+2,Sucursal Norte,"Ruta 9 Km 3.5, Santiago del Estero",True
+3,Sucursal Sur,"Av. Belgrano Sur 890, Santiago del Estero",False
+```
+
+El negocio tiene dos, y el export de stock las nombra `Administración Central
+Alem` (10.148 filas) y `Sucursal Santa Cruz` (2.577).
+
+El ETL de inventario necesita traducir esos nombres a un `sucursal_id`, y hoy
+lo hace con una correspondencia **inferida por volumen** (la unidad más grande
+se mapea a la 1), declarada en `decisiones.SUCURSAL_POR_UNIDAD_DE_NEGOCIO`.
+
+No se puede confirmar contra los nombres actuales, porque son ficticios: la
+salida natural es reemplazarlos por los reales, conservando los ids 1 y 2 para
+no invalidar las recomendaciones ya guardadas en Postgres. El POS no exporta
+direcciones de sucursal.
+
+**Decisión del usuario (2026-10-10): dejarlo como está por ahora.** El riesgo
+está contenido mientras el inventario no se vuelque a `data/csv/`; si se
+volcara con la correspondencia al revés, el stock quedaría cargado en la
+sucursal equivocada, y eso no falla: recomienda mal.
 
 ---
 
