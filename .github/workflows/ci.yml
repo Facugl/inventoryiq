@@ -95,3 +95,67 @@ jobs:
 
       - name: Test
         run: pytest -q
+
+  # Los otros tres jobs NO construyen las imágenes Docker: corren tests, lint y
+  # build con las herramientas nativas. Eso dejó pasar dos bugs seguidos que
+  # rompieron el deploy de Render durante tres días, sin que CI se pusiera en
+  # rojo ni una vez:
+  #
+  #   1. El Dockerfile del frontend hacía `npm install` en un proyecto pnpm.
+  #      Lo habría visto cualquier build de la imagen.
+  #   2. `pnpm run dev -- --host` le pasa el `--` literal al script y Vite
+  #      ignora el resto, así que el contenedor arrancaba escuchando en el
+  #      puerto equivocado. Ese NO lo habría visto un build: hay que levantar
+  #      el contenedor y pedirle algo.
+  #
+  # Por eso este job construye y además levanta: `docker compose up` es el
+  # mismo camino que documenta el README para arrancar el proyecto, así que
+  # verifica de paso que esas instrucciones sigan siendo ciertas.
+  docker:
+    name: Docker images build & smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare env file
+        run: cp .env.example .env
+
+      - name: Build images and start the stack
+        run: docker compose up -d --build
+
+      # El backend tarde: Spring Boot, Flyway y la carga de los CSV. El bucle
+      # espera hasta 3 minutos y falla con un motivo en vez de colgarse.
+      - name: Wait for the backend health check
+        run: |
+          for i in $(seq 1 36); do
+            if [ "$(curl -fsS http://localhost:8080/health 2>/dev/null)" = "OK" ]; then
+              echo "backend OK en el intento $i"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "El backend no respondió OK en /health tras 3 minutos"
+          exit 1
+
+      - name: Wait for the frontend to serve
+        run: |
+          for i in $(seq 1 24); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5173/ 2>/dev/null)
+            if [ "$code" = "200" ]; then
+              echo "frontend 200 en el intento $i"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "El frontend no devolvió 200 tras 2 minutos"
+          exit 1
+
+      # Sin esto, un fallo acá se lee como "algo no respondió" y hay que
+      # reproducirlo a mano para saber por qué.
+      - name: Container logs on failure
+        if: failure()
+        run: docker compose logs --tail=200
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
