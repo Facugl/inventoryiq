@@ -79,18 +79,22 @@ class ForecastDemandServiceTest {
 		ForecastDemandResult result = service.execute(
 				new ForecastDemandQuery(PRODUCT_ID, STORE_ID, LocalDate.parse("2025-12-24"), 7));
 
-		// baseAds = ADS corregido de todo el historial (nov+dic) = (5*10 + 5*20) / 10 = 15.
-		assertEquals(15.0, result.baseAds(), 1e-9);
+		// El ADS divide por los días del PERÍODO, no por los días en que hubo
+		// ventas: un día sin vender es un día de demanda cero, no un día que
+		// no existe. Acá hay 54 días con snapshot del día anterior
+		// (01/11 a 24/12) y 150 unidades vendidas en total.
+		assertEquals(150.0 / 54, result.baseAds(), 1e-9);
 		assertEquals(1, result.periods().size());
 
 		DemandForecastPeriod period = result.periods().get(0);
 		assertEquals(LocalDate.parse("2025-12-25"), period.periodStart());
 		assertEquals(LocalDate.parse("2025-12-31"), period.periodEnd());
-		// índice de diciembre = ADS de diciembre (20) / ADS del período completo (15) = 1.3333...
-		assertEquals(20.0 / 15.0, period.seasonalIndex(), 1e-9);
-		// ADS proyectado = baseAds * índice = 15 * (20/15) = 20 -> coincide con el ADS histórico real de diciembre.
-		assertEquals(20.0, period.projectedDailyAds(), 1e-6);
-		assertEquals(140, period.projectedTotalDemand()); // round(20 * 7 días)
+		// índice de diciembre = ADS de diciembre (100 u en 24 días) / ADS del período completo.
+		assertEquals((100.0 / 24) / (150.0 / 54), period.seasonalIndex(), 1e-9);
+		// Lo que importa del índice: aplicado al ADS base recupera el ADS real
+		// de diciembre, que es más alto que el promedio del período.
+		assertEquals(100.0 / 24, period.projectedDailyAds(), 1e-6);
+		assertEquals(29, period.projectedTotalDemand()); // round(4.1666 * 7 días)
 	}
 
 	@Test

@@ -71,7 +71,8 @@ public class ForecastDemandService implements ForecastDemandUseCase {
 				product.productId(), query.storeId(), windowStart, query.referenceDate());
 		List<Inventory> snapshots = inventoryRepository.findSnapshotsInRange(
 				product.productId(), query.storeId(), windowStart.minusDays(1), query.referenceDate());
-		List<DailySalesRecord> dailyRecords = DailySalesRecordAssembler.assemble(sales, snapshots);
+		List<DailySalesRecord> dailyRecords = DailySalesRecordAssembler.assemble(
+				sales, snapshots, windowStart, query.referenceDate());
 
 		double baseAds;
 		try {

@@ -92,8 +92,16 @@ def transformar(
                                   f"{export.nombre}: producto={producto_id}")
                 continue
 
-            # `Sale` rechaza negativos por invariante. Un neto negativo es un
-            # día de devoluciones, que no es lo mismo que un día sin venta.
+            # Los días sin venta no se emiten, y eso es seguro SÓLO porque
+            # `DailySalesRecordAssembler` arma un registro por cada día del
+            # período y pone en cero los que no tienen fila. Sin ese relleno,
+            # el ADS dividiría por "días en que se vendió" en vez de "días del
+            # período" y saldría inflado sin que nada falle. Si alguna vez se
+            # toca ese contrato, hay que volver acá.
+            #
+            # Un neto negativo tampoco se emite: es un día de devoluciones,
+            # que no es lo mismo que un día sin venta, y `Sale` rechaza
+            # negativos por invariante.
             if unidades <= 0 or importe < 0:
                 continue
 

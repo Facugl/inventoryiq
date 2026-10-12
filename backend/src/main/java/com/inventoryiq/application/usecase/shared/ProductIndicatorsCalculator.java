@@ -71,7 +71,8 @@ public class ProductIndicatorsCalculator {
 		// límite hacia atrás), así que no es la misma consulta duplicada.
 		List<Inventory> snapshots = inventoryRepository.findSnapshotsInRange(
 				product.productId(), storeId, windowStart.minusDays(1), referenceDate);
-		List<DailySalesRecord> dailyRecords = DailySalesRecordAssembler.assemble(sales, snapshots);
+		List<DailySalesRecord> dailyRecords = DailySalesRecordAssembler.assemble(
+				sales, snapshots, windowStart, referenceDate);
 
 		double ads;
 		try {

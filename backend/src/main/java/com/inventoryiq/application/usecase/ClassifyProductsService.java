@@ -98,7 +98,8 @@ public class ClassifyProductsService implements ClassifyProductsUseCase {
 
 		List<Inventory> snapshots = inventoryRepository.findSnapshotsInRange(
 				product.productId(), query.storeId(), windowStart.minusDays(1), query.referenceDate());
-		List<DailySalesRecord> dailyRecords = DailySalesRecordAssembler.assemble(sales, snapshots);
+		List<DailySalesRecord> dailyRecords = DailySalesRecordAssembler.assemble(
+				sales, snapshots, windowStart, query.referenceDate());
 
 		List<Integer> unitsWithoutStockout = dailyRecords.stream()
 				.filter(r -> !r.hadStockout())

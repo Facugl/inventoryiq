@@ -230,6 +230,28 @@ Los próximos pasos concretos, en orden de valor para el uso real del sistema:
 mitad de una tarea: todo lo implementado está terminado, testeado y
 documentado, y el repositorio queda consistente.
 
+### Un bug corregido al revisar esto (2026-10-12)
+
+Vale dejarlo asentado porque es del tipo que no falla, sólo recomienda mal, y
+porque el error estaba también en un test, no sólo en el código.
+
+`AdsCalculator.calculateCorrectedAds` divide por la cantidad de registros que
+recibe. El dataset simulado trae una fila por producto × sucursal × **día**,
+incluidos los 8.735 días sin venta (12% del archivo), y es eso lo que hace que
+el promedio sea un promedio diario. `DailySalesRecordAssembler` armaba la serie
+sólo a partir de las ventas existentes, así que el divisor terminaba siendo
+"días en que se vendió" en vez de "días del período".
+
+Con el dataset simulado no se notaba, porque todos los días tienen fila. Pero
+un producto que vende 5 días de 90 habría dado un ADS **18 veces más alto**, y
+el punto de pedido y la cantidad sugerida escalan con el ADS.
+
+Corregido: el assembler ahora arma un registro por cada día del período y pone
+en cero los que no tienen venta. `ForecastDemandServiceTest` tenía la
+expectativa vieja escrita como `(5*10 + 5*20) / 10 = 15`, dividiendo por los
+días en que hubo ventas mientras lo llamaba "ADS de todo el historial" — se
+actualizó con el divisor correcto.
+
 ### Qué funciona hoy
 
 - El MVP completo corriendo con el dataset simulado — 9 pantallas, 19 casos de
@@ -273,18 +295,35 @@ sistema del historial de inventario y lo deja funcionar **sólo con ventas**,
 que sí se pueden traer hacia atrás: unos 60-90 exports a mano y hay
 recomendaciones sobre datos reales en una tarde.
 
-Lo que cuesta, y conviene tenerlo presente antes de empezar:
+**Dónde se toca.** Un solo lugar: los cuatro servicios que necesitan la serie
+diaria (`ProductIndicatorsCalculator`, `ClassifyProductsService` para XYZ,
+`ForecastDemandService` y `SeasonalityCalculator`) leen todos la salida de
+`DailySalesRecordAssembler`. Cambiarlo ahí los cubre a los cuatro.
 
-- Hay que aplicarlo en cuatro lugares, no uno: `ProductIndicatorsCalculator`,
-  `ClassifyProductsService` (XYZ), `ForecastDemandService` y
-  `SeasonalityCalculator`.
-- `calculateSimpleAds` es suma/cantidad de elementos: hay que armar la ventana
-  completa rellenando ceros. Pasarle sólo los días con venta multiplica el ADS
-  por decenas y el error no falla, recomienda mal.
-- Se pierde la corrección por quiebres, que **subestima la demanda justo en los
-  productos que se agotan** — los que la herramienta existe para detectar.
+El relleno de la ventana con ceros **ya está hecho** (2026-10-12), así que ese
+paso no hay que repetirlo: hoy el assembler emite un registro por cada día del
+período. Lo que falta para B es que deje de excluir los días sin snapshot del
+día anterior.
+
+**La decisión de diseño que hay que resolver bien.** `DailySalesRecord` deriva
+el quiebre de `stockAtStartOfDay <= 0`, y es un `int`: no sabe decir "no
+conozco el stock". Para un día sin snapshot, pasar 0 lo marca como quiebre y lo
+excluye —justo lo contrario de lo buscado— y pasar cualquier positivo afirma un
+stock que no se conoce. B empieza por darle al modelo la noción de **stock
+desconocido**, distinta de stock cero. Resuelto eso, el resto sale solo: si
+ningún día queda marcado como quiebre, `calculateCorrectedAds` no excluye nada
+y degrada naturalmente a ADS simple, sin necesidad de llamar a
+`calculateSimpleAds`.
+
+**Lo que se pierde:**
+
+- La corrección por quiebres, que **subestima la demanda justo en los productos
+  que se agotan** — los que la herramienta existe para detectar.
 - La UI tendría que distinguir un ADS corregido de uno que no lo está, o sería
   la degradación silenciosa que el proyecto evita en todo lo demás.
+
+XYZ y estacionalidad, en cambio, sí funcionarían bien: con ventas diarias
+reales la variabilidad que miden es real.
 
 El análisis completo de los dos caminos está en la Sección 5.3 de
 `docs/InventoryIQ_ETL_Catalogo.md`.

@@ -155,6 +155,12 @@ Este último caso es la regla de disparo exacta de la Sección 4.4: `stock actua
 
 ### 2.3 Notas sobre el detalle omitido
 
+`DailySalesRecordAssembler` construye **un registro por cada día del período**,
+no solo por los días con una venta registrada: el ADS corregido divide por la
+cantidad de registros que recibe, así que un día sin ventas tiene que llegar
+como un día de cero unidades. Los días para los que no hay snapshot del día
+anterior sí se excluyen, porque sin él no se puede saber si hubo quiebre.
+
 - **`CALC`** colapsa la construcción del historial diario (`DailySalesRecordAssembler`) y cuatro cálculos secuenciales: `AdsCalculator`, `SafetyStockCalculator.calculateSimplifiedMethod`, `ReorderPointCalculator.calculate` y `OverstockDetector.calculateCurrentDaysOfCoverage`. También se calcula `ProductStatusEvaluator.evaluate`, aunque este flujo no lo usa para filtrar.
 - La validación de `storeId`/`referenceDate` nulos en `GenerateReorderSuggestionsQuery` (→ 400 Bad Request) y el detalle de `RecommendedQuantityCalculator.calculateByTargetCoverage` (Sección 4.5) se documentan aquí en texto en lugar de como nodos propios.
 - El `supplierId` del resultado se propaga tal cual desde `Product.supplierId()`, sin resolverlo contra un `SupplierRepository` (ese puerto no existe en el repositorio).

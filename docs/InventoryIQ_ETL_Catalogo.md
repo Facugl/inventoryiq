@@ -274,9 +274,17 @@ tres meses anotado como un martes inflaría el ADS de todo el catálogo sin que
 nada falle — es el error más caro del pipeline y por eso se verifica contra el
 archivo en vez de confiar en quien lo exportó.
 
-**Los días sin venta no se emiten**, igual que antes: un día ausente ya
-significa que no se vendió. Tampoco los de menos de una unidad (productos por
-peso) ni los de importe no numérico, que se descartan con su motivo.
+**Los días sin venta no se emiten**, y eso es seguro **sólo** por el contrato
+con el backend: `DailySalesRecordAssembler` arma un registro por cada día del
+período y pone en cero los que no tienen fila. Sin ese relleno, el ADS
+dividiría por "días en que se vendió" en vez de "días del período" y saldría
+inflado en proporción a lo poco que rote el producto — sin que nada falle.
+
+Es un acoplamiento real entre el ETL y el dominio, y por eso está escrito en
+los dos lados.
+
+Tampoco se emiten los días de menos de una unidad (productos por peso) ni los
+de importe no numérico, que se descartan con su motivo.
 
 ---
 
