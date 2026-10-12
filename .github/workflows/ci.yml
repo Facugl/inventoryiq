@@ -35,10 +35,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Sin `version`: la toma del campo `packageManager` de
+      # frontend/package.json, que es la misma que usa el Dockerfile. Una
+      # sola fuente de verdad en vez de dos que se desincronizan.
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 11
 
       - name: Set up Node
         uses: actions/setup-node@v4
