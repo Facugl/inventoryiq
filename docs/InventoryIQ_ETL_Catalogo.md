@@ -2,11 +2,13 @@
 
 **Estado: IMPLEMENTADO.** Este documento registra el relevamiento de los
 exports reales del POS y las decisiones de negocio tomadas antes de escribir
-código. Las cuatro entidades —**categorías**, **proveedores**, **inventario** y
-**productos**— están implementadas (`etl/`).
+código. Las cinco entidades están implementadas (`etl/`): **categorías**,
+**proveedores**, **productos**, **inventario** y **ventas**.
 
-El catálogo todavía **no es utilizable**, pero ya no por el ETL: falta el
-historial de ventas, que ningún export entrega (Sección 5.3).
+El catálogo todavía **no es utilizable**, pero ya no por falta de código: falta
+**historia**. El stock y las ventas se acumulan día a día a partir de exports
+periódicos, y hoy hay un día de cada uno. La Sección 5.3 explica por qué no se
+puede recuperar hacia atrás y cuál es la rutina.
 
 Relevamiento hecho el 2026-10-10 sobre los exports en `data/real-export/`
 (carpeta ignorada por git, ver `.gitignore`), ampliado el 2026-10-11 con el
@@ -17,11 +19,17 @@ listado de ventas que destrabó la categoría de los productos (Sección 5.1).
 ## 1. Alcance
 
 Un pipeline aparte, en Python, que convierte los exports crudos del POS al
-formato de `data/csv/*.csv` que **los adaptadores ya consumen**:
+mismo formato de CSV que **los adaptadores ya consumen**:
 
 ```
-data/real-export/   →   [ etl/ ]   →   data/csv/
+data/real-export/   →   [ etl/ ]   →   data/csv-real/
 ```
+
+El destino es `data/csv-real/`, **no** `data/csv/`. Esta última está versionada
+y el repositorio es público: volcar ahí el catálogo real publicaría costos,
+márgenes y proveedores. `data/csv/` sigue siendo el dataset simulado con el que
+cualquiera puede clonar y levantar el sistema, y el backend se apunta al real
+con `INVENTORYIQ_CSV_BASE_PATH`.
 
 No toca el backend ni el dominio. Es deliberadamente distinto del ETL de la
 fila v2.0 del roadmap, que sí implica reemplazar el adaptador CSV por uno
@@ -229,14 +237,41 @@ fecha. Se recibe por parámetro y, si no se indica, se cae a la fecha de
 modificación del archivo. En ambos casos el reporte deja asentado qué fecha
 usó y de dónde salió, en vez de elegirla en silencio.
 
-**Las sucursales se corresponden por volumen.** El export nombra
-`Administración Central Alem` (10.148 filas) y `Sucursal Santa Cruz` (2.577),
-pero `sucursales.csv` tiene los nombres **simulados** (Centro, Norte, Sur), así
-que la correspondencia se infirió por volumen: la unidad más grande se mapea a
-la sucursal 1. No se puede verificar contra los nombres, y por decisión del
+**Las sucursales se corresponden por volumen.** El export nombra dos unidades
+de negocio, de 10.148 y 2.577 filas, pero `sucursales.csv` tiene los nombres
+**simulados** (Centro, Norte, Sur), así que la correspondencia se infirió por
+volumen: la unidad más grande se mapea a la sucursal 1. No se puede verificar contra los nombres, y por decisión del
 usuario (2026-10-11) queda así — ver Sección 5.2, donde está el razonamiento
 completo. La consecuencia si estuviera invertida sigue en pie: un stock cargado
 en la sucursal equivocada no falla, simplemente recomienda mal.
+
+### 3.5 `ventas.csv`
+
+Origen: el reporte *Ventas de Productos* exportado con **`desde = hasta`**.
+
+| Destino | Origen | Transformación |
+|---|---|---|
+| `venta_id` | — | correlativo del ETL |
+| `fecha` | el `Período` del encabezado | tiene que ser de un solo día |
+| `producto_id` | `Barra` | ver 2.3 |
+| `sucursal_id` | `Unidad de Negocio` del encabezado | ver 5.2 |
+| `unidades_vendidas` | `Cantidad` | redondeado a entero |
+| `importe_total` | `Venta` | sin redondear |
+
+**El archivo se describe a sí mismo**, y eso es lo que hace viable el proceso:
+el encabezado declara la unidad de negocio y el período, así que no hace falta
+ninguna convención de nombres de archivo ni un manifiesto aparte. Se exporta,
+se deja en la carpeta, y el ETL sabe de qué día y de qué sucursal es.
+
+**Un listado de más de un día se rechaza.** `Cantidad` viene agregada al
+período, así que sólo es venta diaria si el período es de un día. Un listado de
+tres meses anotado como un martes inflaría el ADS de todo el catálogo sin que
+nada falle — es el error más caro del pipeline y por eso se verifica contra el
+archivo en vez de confiar en quien lo exportó.
+
+**Los días sin venta no se emiten**, igual que antes: un día ausente ya
+significa que no se vendió. Tampoco los de menos de una unidad (productos por
+peso) ni los de importe no numérico, que se descartan con su motivo.
 
 ---
 
@@ -399,8 +434,8 @@ inventados**, heredados de los datos simulados:
 3,Sucursal Sur,"Av. Belgrano Sur 890, Santiago del Estero",False
 ```
 
-El negocio tiene dos, y el export de stock las nombra `Administración Central
-Alem` (10.148 filas) y `Sucursal Santa Cruz` (2.577).
+El negocio tiene dos, y el export de stock las nombra con sus nombres reales
+(10.148 filas una, 2.577 la otra).
 
 El ETL de inventario necesita traducir esos nombres a un `sucursal_id`, y hoy
 lo hace con una correspondencia **inferida por volumen** (la unidad más grande
@@ -413,62 +448,84 @@ direcciones de sucursal.
 
 **Decisión del usuario (2026-10-11): se siguen usando los nombres simulados.**
 La correspondencia por volumen queda firme, y `sucursales.csv` se arrastra tal
-cual al catálogo real. Tiene además una ventaja no buscada: los nombres de las
-sucursales del negocio no quedan en un repositorio público.
+cual al catálogo real.
 
-### 5.3 El historial de ventas — el único bloqueante que queda
+**Corrección (2026-10-11).** Se dijo entonces que esto mantenía los nombres
+reales fuera de un repositorio público. Era falso: lo ficticio era sólo el
+`sucursales.csv` de salida, mientras los nombres verdaderos estaban escritos en
+`decisiones.py`, en los tests, en un fixture y en este mismo documento.
 
-Descubierto al armar el catálogo completo, y con productos ya implementado es
-**lo único que separa al sistema de correr con datos reales**.
+Ahora sí se cumple. La correspondencia no vive en el código: se arma en
+`data/real-export/sucursales.json`, que está ignorado por git, y lo que queda
+versionado es sólo la regla (`sucursales.derivar_por_volumen`). Si el archivo
+no existe, el ETL lo deriva por volumen del propio export y lo deja escrito
+para que se pueda revisar y corregir a mano — en vez de decidirlo en silencio
+en cada corrida. Los fixtures usan nombres inventados.
 
-El backend lee seis CSV, y `ventas.csv` es uno de ellos. No tiene fuente
-migrada: ninguno de los exports relevados trae ventas diarias por producto y
-sucursal, que es la granularidad que necesita. `Ventas_de_Productos.xls` trae
-cantidades, pero agregadas por período y sólo para 375 productos.
+### 5.3 El historial — ventas e inventario
 
-No es un detalle de completitud. Las ventas alimentan el ADS (venta promedio
-diaria), y de ahí salen el punto de pedido, la cobertura, el sobrestock y toda
-la recomendación. Un catálogo real con ventas simuladas no produce
-recomendaciones malas: no produce ninguna, porque las ventas versionadas
-apuntan a productos que en el catálogo real no existen.
+Es lo único que separa al catálogo real de poder usarse, y son **dos** huecos.
+El pipeline para los dos está implementado; lo que falta es que haya historia
+que procesar, y eso sólo se consigue acumulando.
 
-Verificado con el comando de migración sobre el catálogo real ya generado:
+#### Por qué no se puede recuperar hacia atrás
+
+| | ¿Se puede pedir un día pasado? |
+|---|---|
+| Ventas | **Sí.** El reporte acepta rango de fechas, así que un día viejo se exporta cuando se quiera |
+| Stock | **No.** El export es "stock actual": un export, un día, el de hoy |
+
+De ahí sale toda la estrategia. El stock es lo urgente: **cada día que pasa sin
+exportarlo es un día que no existe nunca más**. Las ventas pueden esperar.
+
+#### Por qué un snapshot solo no alcanza
+
+| | Dataset simulado | Catálogo real (hoy) |
+|---|---|---|
+| Fechas de snapshot | 395 | 1 |
+
+`ProductIndicatorsCalculator` pide la serie diaria a
+`DailySalesRecordAssembler`, y esa serie **exige un snapshot del día anterior a
+cada venta**: es lo que permite saber si el producto estuvo en quiebre, para
+excluir ese día del ADS corregido (regla 4.9). Un producto sin ningún día
+utilizable se descarta entero.
+
+No alcanza con tener muchos días de cada cosa: tienen que **cruzarse**. El
+comando `migrar` lo verifica y lo dice, porque la integridad referencial no lo
+ve — un catálogo puede cerrar perfecto y dejar todas las pantallas vacías:
 
 ```
-ventas.csv.producto_id -> productos.csv.producto_id:
-  26.070 filas apuntan a 22 valores inexistentes
+HISTORIAL INSUFICIENTE PARA CALCULAR:
+  - ningún día de venta tiene un snapshot del día anterior (1 día(s) de
+    venta, 1 de stock). El ADS corregido descarta TODOS los productos
+CATÁLOGO CONSISTENTE, PERO SIN HISTORIAL SUFICIENTE
 ```
 
-Es la única violación que queda. Los otros cinco archivos cierran entre sí.
+#### La rutina
 
-**Hay una fuente, pero no es un export.** En la pantalla *Ventas de Productos*,
-al abrir el gráfico de ventas de un producto, el POS pide por XHR la serie
-diaria de ese producto y responde XML:
+Un solo archivo por día: se exporta la consulta de stock y se deja en
+`data/real-export/diarios/`. Sin renombrar nada — el export trae su fecha en el
+pie y su unidad de negocio en el encabezado.
 
-```xml
-<record fecha="1784170800000" valor="2.000" costosini="3443.520"
-        prevta="4297.520" rentabilidad="854.000"/>
-```
+Conviene **a la misma hora siempre**, y preferentemente al cierre: el
+`DailySalesRecordAssembler` trata el snapshot como stock de cierre del día. Un
+día a las 9 y otro a las 21 corren el significado de "día".
 
-Mapea 1:1 contra `ventas.csv`: `fecha` es epoch en milisegundos, `valor` son
-las unidades vendidas y `prevta` el importe. La serie arranca en 2021, de sobra
-para el ADS. La sucursal no viaja en el XML: sale del filtro con el que se abrió
-la pantalla, igual que el listado de categorías.
+Las ventas se exportan cuando se quiera, con `desde = hasta`, una por sucursal
+y por día, a la misma carpeta.
 
-El problema es que el gráfico se abre **de a un producto**: no hay ningún botón
-que exporte la serie de todos. Las opciones, en orden de preferencia:
+#### Una distorsión conocida
 
-1. **Encontrar el reporte que ya lo exporte.** Sería lo más barato y lo más
-   estable. No se relevó todavía si XRP lo tiene.
-2. **Replicar el XHR desde el pipeline**, un request por producto. Es el
-   camino conocido, y tiene costos reales que hay que asumir a propósito:
-   son ~6.500 requests contra el servidor del propio negocio (conviene correrlo
-   fuera del horario de atención y secuencialmente), la cookie de sesión vence
-   y el proceso tiene que cortar ruidosamente en vez de seguir guardando
-   respuestas vacías, y hay que repetirlo por cada sucursal.
+El snapshot es lo que decide si hubo quiebre. Si la mercadería entró pero la
+factura todavía no se cargó, el POS muestra menos stock del real, el día
+**parece** quiebre y se excluye del ADS aunque haya habido ventas. No se puede
+eliminar desde el pipeline; cargar las facturas con un desfasaje chico y parejo
+lo acota. Queda asentado acá porque es la primera explicación a mirar cuando un
+número salga raro.
 
-Mientras no haya ninguna de las dos, el catálogo real **no se puede usar**: el
-`migrar` lo dice y falla con código distinto de cero.
+Es la otra cara de la limitación ya documentada en
+`InventoryIQ_Arquitectura.md` (el stock del POS llega sin corregir por las
+ventas posteriores al snapshot).
 
 ---
 
@@ -525,12 +582,12 @@ Lo imponen las dependencias:
    cubriendo las 10.325 filas de producto: el cruce de productos no va a
    necesitar casos especiales.
 3. **Inventario** — IMPLEMENTADO. Sumó el lector de HTML disfrazado de `.xls`.
-   Sobre el export real: 12.725 leídas, 7.209 emitidas, 5.516 descartadas
-   (5.515 sin dato de stock y 1 sin código de barras) y 5.152 ajustadas por
-   stock negativo. En la salida no queda ningún negativo, y el
-   `CsvInventoryRepositoryAdapter` real la carga — lo que también prueba el
-   ajuste, porque el invariante `currentStock >= 0` de `Inventory` habría
-   fallado con cualquier negativo.
+   Sobre el export real: 12.725 leídas, **7.173 emitidas**, 5.552 descartadas
+   (5.515 sin dato de stock, 36 de productos que no quedaron en el catálogo y
+   1 sin código de barras) y 5.152 ajustadas por stock negativo. En la salida
+   no queda ningún negativo, y el `CsvInventoryRepositoryAdapter` real la carga
+   — lo que también prueba el ajuste, porque el invariante `currentStock >= 0`
+   de `Inventory` habría fallado con cualquier negativo.
 4. **Productos** — IMPLEMENTADO. Es el único que cruza cuatro exports:
    precios (maestro), el listado de ventas (categoría), categorías (resolver la
    ruta a un id) y proveedores (resolver el nombre a un id). Los tres
@@ -542,20 +599,29 @@ Lo imponen las dependencias:
    correspondencia**, y 3.861 ubicadas en "No Categorizado" por la decisión
    4.7.
 
-El comando `migrar` arma las cuatro entidades juntas en una carpeta aparte y
-verifica la integridad referencial entre los seis archivos antes de dar el
-catálogo por bueno. Existe porque las entidades **no se pueden migrar de a
-una**: se referencian entre sí, y el backend las carga todo-o-nada. Falla con
-código distinto de cero mientras el conjunto no cierre, que sigue siendo hoy —
-pero ahora por un único motivo, y es el de la Sección 5.3: `ventas.csv` se
-arrastra del dataset simulado y apunta a productos que en el catálogo real no
-existen.
+5. **Ventas** — IMPLEMENTADO. No sale de un export del catálogo sino del
+   reporte de ventas exportado con `desde = hasta`, uno por día y por
+   sucursal. Junto con inventario son las dos entidades que **acumulan**: cada
+   corrida agrega los días nuevos y conserva los viejos, porque el stock no se
+   puede pedir hacia atrás y porque las dos se escriben también desde la
+   aplicación (conteo manual de stock, carga de ventas por CSV) y regenerar el
+   archivo borraría eso.
 
-La salida va a `data/csv-real/`, **no** a `data/csv/`: esta última está
-versionada y el repositorio es público, así que volcar ahí el catálogo real
-publicaría costos, márgenes y proveedores. El backend se apunta a la carpeta
-real con `INVENTORYIQ_CSV_BASE_PATH`, y `data/csv/` sigue siendo el dataset
-simulado con el que cualquiera puede clonar y levantar el sistema.
+El comando `migrar` arma las cinco entidades juntas en `data/csv-real/` y las
+verifica antes de dar el catálogo por bueno. Existe porque las entidades **no
+se pueden migrar de a una**: se referencian entre sí, y el backend las carga
+todo-o-nada.
+
+Verifica dos cosas distintas, y conviene no confundirlas:
+
+- **Integridad referencial** entre los seis archivos. Si no cierra, falla con
+  código distinto de cero: el problema aparece ahora y no al arrancar la
+  aplicación.
+- **Historial suficiente** (Sección 5.3). El catálogo puede cerrar perfecto y
+  no servir para nada, así que además comprueba que haya días de venta con
+  snapshot del día anterior. Hoy avisa que no los hay. No hace fallar al
+  comando —el catálogo *es* consistente— pero lo dice en vez de cantar
+  victoria.
 
 > Nota del slice 1: el catálogo real **no contiene el `categoria_id` 14** que
 > usan los productos simulados, así que `data/csv/categorias.csv` no se puede

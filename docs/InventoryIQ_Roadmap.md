@@ -133,7 +133,7 @@ referencia de hacia dónde escala el proyecto una vez cerrado el MVP:
 |---|---|---|
 | v1.1 | Alertas configurables, exportación de reportes, matriz ABC-XYZ como heatmap | Parcial: umbral de sobrestock y stock de seguridad extra ya son configurables por categoría (Sección 8.10, pantalla Administración → "Parámetros de categorías"); las pantallas de Alertas y Clasificación ya existen (adelantadas al MVP), pero sin exportación ni heatmap |
 | v1.2 | Comparativa multi-sucursal, parámetros por categoría+sucursal | No iniciada |
-| v2.0 | ETL real (Python + Pandas) + Data Warehouse en modelo estrella, reemplazando el adaptador CSV por uno Postgres/DW sin tocar el dominio | No iniciada |
+| v2.0 | ETL real (Python + Pandas) + Data Warehouse en modelo estrella, reemplazando el adaptador CSV por uno Postgres/DW sin tocar el dominio | No iniciada. **Ojo:** el ETL de `etl/` no es este. Aquel convierte los exports del POS al mismo formato CSV que ya se consume; éste implica reemplazar el adaptador CSV por uno Postgres/DW |
 | v3.0 | Forecasting estadístico/ML, estrategia de recomendación por clasificación ABC-XYZ, optimización multi-proveedor | No iniciada |
 
 ---
@@ -187,21 +187,36 @@ Los próximos pasos concretos, en orden de valor para el uso real del sistema:
    no previstos: ningún export trae la categoría del producto para el catálogo
    completo, y el 40% de las filas de stock vienen en negativo.
 
-   **Actualización (2026-10-11):** el pipeline está implementado para las cuatro
-   entidades que salen del POS — categorías, proveedores, inventario y productos.
-   La categoría de los productos se destrabó: el reporte *Ventas de Productos* se
-   puede filtrar por sucursal y por rango de fechas, y con el rango completo pasa
-   de 375 a 6.528 productos, lo que deja con categoría real al 88,8% de los que
-   tienen stock (el resto va a "No Categorizado", decisión 4.7 del doc del ETL).
+   **Actualización (2026-10-11):** se destrabó la categoría de los productos,
+   que era el bloqueante del slice. El reporte *Ventas de Productos* se puede
+   filtrar por sucursal y por rango de fechas, y con el rango completo pasa de
+   375 a 6.528 productos: queda con categoría real el 88,8% de los que tienen
+   stock, y el resto va a "No Categorizado" (decisión 4.7 del doc del ETL).
 
-   **Lo que falta ahora es uno solo, y es el más caro:** el historial de ventas
-   diarias por producto y sucursal. Ningún export lo entrega. El POS sí lo tiene
-   —la pantalla de *Ventas de Productos* grafica la serie diaria de un producto
-   pidiéndola por XHR en XML— pero de a un producto por vez. Mientras no haya un
-   reporte que lo exporte entero, o un proceso que replique ese XHR por producto,
-   el catálogo real no se puede usar: `ventas.csv` se arrastra del dataset
-   simulado y apunta a productos que no existen en el catálogo real. Ver Sección
-   5.3 de `docs/InventoryIQ_ETL_Catalogo.md`.
+   **Actualización (2026-10-12): las cinco entidades están implementadas** —
+   categorías, proveedores, productos, inventario y ventas. Lo que falta ya no
+   es código: es historia.
+
+   El sistema calcula sobre series diarias. El ADS corregido (regla 4.9)
+   necesita un snapshot de inventario del día anterior a cada venta para saber
+   si hubo quiebre, y el catálogo real tiene **un solo snapshot** contra los
+   395 del dataset simulado. Con uno solo, todos los productos se descartan.
+
+   La asimetría que define el plan: las ventas **sí** se pueden pedir hacia
+   atrás (el reporte acepta rango de fechas), el stock **no** (su export es
+   "stock actual"). Por eso lo urgente es empezar a exportar el stock todos los
+   días: cada día sin hacerlo es un día que no existe nunca más. Las ventas se
+   recuperan después, y el ETL va acumulando los dos. La calidad de las
+   recomendaciones crece con los días acumulados.
+
+   `migrar` verifica que los días se crucen y avisa cuando el catálogo cierra
+   pero no hay con qué calcular, en vez de dejar que el backend arranque con
+   las pantallas vacías. Ver Sección 5.3 de
+   `docs/InventoryIQ_ETL_Catalogo.md`.
+
+   **El próximo paso es operativo, no de código:** exportar la consulta de
+   stock todos los días y dejarla en `data/real-export/diarios/`. La rutina
+   está en `etl/README.md`.
 2. **README de arranque rápido** en la raíz del repo — **completado** (ver Fase 6).
 3. Recién después, evaluar si conviene avanzar hacia v1.1/v1.2 (alertas configurables,
    multi-sucursal) o directamente hacia v2.0 (ETL real + Data Warehouse), según qué

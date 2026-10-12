@@ -80,15 +80,21 @@ carpeta real, cambiá el volumen del servicio `backend` en `docker-compose.yml`
 a `./data/csv-real:/app/data/csv` (o fijá `INVENTORYIQ_CSV_BASE_PATH` si lo
 corrés sin Docker) y reiniciá: `docker compose up -d backend`.
 
-Las cuatro entidades que salen del POS —categorías, proveedores, productos e
-inventario— están implementadas. **El catálogo todavía no es utilizable por un
-único motivo:** ningún export del POS entrega la venta diaria por producto y
-sucursal, así que `ventas.csv` se arrastra del dataset simulado y apunta a
-productos que en el catálogo real no existen. `migrar` lo detecta, lo dice y
-falla con código distinto de cero en vez de dejarte apuntar el backend a un
-catálogo que no arrancaría. El detalle de qué decidió el pipeline en cada caso
-está en [`etl/README.md`](etl/README.md) y, campo por campo, en
-[`docs/InventoryIQ_ETL_Catalogo.md`](docs/InventoryIQ_ETL_Catalogo.md).
+Las cinco entidades están implementadas: categorías, proveedores, productos,
+inventario y ventas.
+
+**Lo que falta no es código, es historia.** El sistema calcula sobre series
+diarias de ventas y de stock, y el POS no las guarda: se arman acumulando
+exports día a día. El stock es lo urgente, porque su export es "stock actual" y
+no se puede pedir un día pasado — cada día sin exportarlo es un día que no
+existe nunca más. Las ventas sí se pueden recuperar después.
+
+`migrar` arma el catálogo, verifica la integridad referencial y además avisa
+cuando todavía no hay con qué calcular, en vez de dejarte apuntar el backend a
+algo que arrancaría con las pantallas vacías.
+
+La rutina está en [`etl/README.md`](etl/README.md) y el detalle campo por campo
+en [`docs/InventoryIQ_ETL_Catalogo.md`](docs/InventoryIQ_ETL_Catalogo.md).
 
 #### Qué exige el backend de cualquier catálogo
 
@@ -150,6 +156,7 @@ correctamente, antes de probar las pantallas a mano:
    ```bash
    cd backend && ./mvnw test
    cd frontend && pnpm lint && pnpm test && pnpm build
+   cd etl && .venv/Scripts/python -m pytest
    ```
    Los tests del backend necesitan Docker corriendo: varios de integración
    levantan un PostgreSQL efímero con Testcontainers.
@@ -157,6 +164,11 @@ correctamente, antes de probar las pantallas a mano:
 ## Desarrollo
 
 - **Backend:** Java 17 + Spring Boot, arquitectura hexagonal. Tests: `cd backend && ./mvnw test`.
+- **ETL:** Python, sin dependencias de runtime (todo de la biblioteca estándar).
+  Convierte los exports del POS al formato que leen los adaptadores CSV, sin
+  tocar el backend. Tests con pytest contra fixtures sintéticos — nunca contra
+  los exports reales, que traen datos de un negocio real y están fuera de git.
+  Ver [`etl/README.md`](etl/README.md).
 - **Frontend:** React + TypeScript + Vite + MUI, con TanStack Query, react-hook-form y yup.
   Tests con Vitest + Testing Library: `cd frontend && pnpm test` (`pnpm test:watch` para desarrollo).
   Lint y build: `pnpm lint && pnpm build`.
@@ -192,9 +204,9 @@ Limitaciones del plan free a tener en cuenta:
 - `docs/InventoryIQ_Arquitectura.md` — arquitectura y flujos **implementados**, auditados contra el código.
 - `docs/InventoryIQ_Roadmap.md` — estado de avance por fase y próximos pasos.
 - `docs/InventoryIQ_ETL_Catalogo.md` — relevamiento de los exports reales del POS,
-  decisiones del pipeline y mapeo campo por campo. Las cuatro entidades que salen
-  del POS están implementadas (ver `etl/README.md`); falta el historial de ventas
-  diarias, que ningún export entrega.
+  decisiones del pipeline y mapeo campo por campo. Las cinco entidades están
+  implementadas (ver `etl/README.md`); lo que falta es acumular historia
+  (Sección 5.3).
 - `docs/README_datos_simulados.md` — cómo se generaron los CSV de prueba.
 - **Swagger UI** (con el backend corriendo) — http://localhost:8080/swagger-ui/index.html:
   documentación interactiva de cada endpoint (parámetros, request/response, "Try it out"
