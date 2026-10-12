@@ -38,8 +38,16 @@ jobs:
       # Sin `version`: la toma del campo `packageManager` de
       # frontend/package.json, que es la misma que usa el Dockerfile. Una
       # sola fuente de verdad en vez de dos que se desincronizan.
+      #
+      # `package_json_file` hace falta porque el repo no tiene package.json en
+      # la raíz y la ruta es relativa a GITHUB_WORKSPACE: el
+      # `working-directory` de `defaults.run` aplica sólo a los pasos `run:`,
+      # no a los `uses:`, así que sin esto la action no encuentra dónde leer
+      # la versión y falla antes de instalar nada.
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
 
       - name: Set up Node
         uses: actions/setup-node@v4
