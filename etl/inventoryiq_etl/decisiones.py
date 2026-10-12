@@ -118,24 +118,13 @@ def producto_id_de(codigo_barra: str) -> str | None:
 
 # --- Sucursales -----------------------------------------------------------
 # El export de stock nombra las sucursales en `Unidad de Negocio`; el backend
-# las identifica por el id de `data/csv/sucursales.csv`.
+# las identifica por el id de `sucursales.csv`. La correspondencia NO vive acá:
+# son los nombres reales de un negocio concreto y este repositorio es público.
+# Se arma en `data/real-export/sucursales.json`, fuera de git, con la regla de
+# `sucursales.derivar_por_volumen` — ver Sección 5.2 del documento.
 #
-# La correspondencia se infiere por VOLUMEN: la unidad con 10.148 filas se toma
-# como la principal. No se puede verificar contra los nombres, porque
-# `sucursales.csv` tiene los simulados (Centro, Norte, Sur) y no los reales del
-# POS.
-#
-# Decisión del usuario (2026-10-11, Sección 5.2 del doc): queda así. Los
-# nombres simulados se conservan —tienen la ventaja de no publicar los nombres
-# reales del negocio en un repositorio público— y se arrastra `sucursales.csv`
-# tal cual al catálogo real, que vive en `data/csv-real/` y no en `data/csv/`.
-#
-# Lo que sigue en pie es la consecuencia si el mapeo estuviera invertido: un
-# stock cargado en la sucursal equivocada no falla, simplemente recomienda mal.
-SUCURSAL_POR_UNIDAD_DE_NEGOCIO = {
-    "Administración Central Alem": "1",
-    "Sucursal Santa Cruz": "2",
-}
+# La consecuencia de equivocarla sigue siendo la de siempre: un stock cargado
+# en la sucursal equivocada no falla, simplemente recomienda mal.
 
 # --- Decisión 4.1 — Stock -------------------------------------------------
 # Un stock negativo en el POS es casi siempre un desfasaje contable, no

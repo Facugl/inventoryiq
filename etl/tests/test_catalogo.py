@@ -5,6 +5,8 @@ from datetime import date
 from helpers import escribir
 from inventoryiq_etl.catalogo import (
     ARCHIVOS_REQUERIDOS,
+    DIAS_DE_HISTORIA_RAZONABLE,
+    dias_utiles,
     migrar,
     verificar_integridad,
 )
@@ -82,9 +84,9 @@ class TestMigrar:
         resultado = migrar(desde, tmp_path / "salida", catalogo_completo, FECHA)
 
         assert {r.entidad for r in resultado.reportes} == {
-            "categorias", "proveedores", "productos", "inventario",
+            "categorias", "proveedores", "productos", "inventario", "ventas",
         }
-        assert set(resultado.arrastrados) == {"sucursales.csv", "ventas.csv"}
+        assert set(resultado.arrastrados) == {"sucursales.csv"}
         assert (tmp_path / "salida" / "categorias.csv").is_file()
 
     def test_sin_el_export_de_precios_falta_productos(
@@ -102,22 +104,20 @@ class TestMigrar:
         assert "productos.csv" in resultado.faltantes
         assert "NO UTILIZABLE" in resultado.resumen()
 
-    def test_hoy_el_catalogo_no_cierra_porque_ventas_no_tiene_fuente(
+    def test_sin_listados_diarios_ventas_falta_en_vez_de_arrastrarse(
         self, tmp_path, export_pos, fixture_stock, catalogo_completo
     ):
-        """Es el estado real del proyecto, y el comando tiene que decirlo.
-
-        Con productos implementado, el único archivo sin fuente en el POS es
-        `ventas.csv`: se arrastra del dataset simulado y apunta a productos
-        que en el catálogo real no existen (Sección 5.3 del documento)."""
+        """Arrastrar el ventas.csv simulado sería peor que no tenerlo: el
+        archivo se ACUMULA, así que la corrida siguiente tomaría esas ventas
+        inventadas por datos ya cargados."""
         (export_pos / "Consulta_de_stock_xrp.xls").write_bytes(fixture_stock.read_bytes())
+        # El listado del fixture cubre un rango largo, no un día.
 
         resultado = migrar(export_pos, tmp_path / "salida", catalogo_completo, FECHA)
 
-        assert resultado.faltantes == []
+        assert "ventas.csv" in resultado.faltantes
         assert not resultado.sirve
-        rota = [v for v in resultado.violaciones if v.clave.archivo == "ventas.csv"]
-        assert rota, "ventas.csv tendría que quedar colgado contra el catálogo real"
+        assert "ventas.csv" not in resultado.arrastrados
 
     def test_productos_se_genera_antes_que_inventario(
         self, tmp_path, export_pos, fixture_stock, catalogo_completo
@@ -166,3 +166,59 @@ def test_los_archivos_requeridos_son_los_que_lee_el_backend():
         "categorias.csv", "proveedores.csv", "productos.csv",
         "sucursales.csv", "ventas.csv", "inventario.csv",
     }
+
+
+class TestHistorialSuficiente:
+    """La integridad referencial no ve si hay con qué calcular. Un catálogo
+    puede cerrar perfecto y dejar todas las pantallas vacías."""
+
+    def _con_dias(self, carpeta, dias_venta, dias_stock):
+        escribir(carpeta, "ventas.csv",
+                 ["venta_id", "fecha", "producto_id", "sucursal_id", "unidades_vendidas", "importe_total"],
+                 [{"venta_id": str(i), "fecha": d, "producto_id": "779", "sucursal_id": "1",
+                   "unidades_vendidas": "1", "importe_total": "10"}
+                  for i, d in enumerate(dias_venta, start=1)])
+        escribir(carpeta, "inventario.csv",
+                 ["inventario_id", "fecha_snapshot", "producto_id", "sucursal_id", "stock_actual", "stock_en_transito"],
+                 [{"inventario_id": str(i), "fecha_snapshot": d, "producto_id": "779",
+                   "sucursal_id": "1", "stock_actual": "5", "stock_en_transito": "0"}
+                  for i, d in enumerate(dias_stock, start=1)])
+
+    def test_un_dia_de_venta_sirve_solo_si_hay_snapshot_del_dia_anterior(self, tmp_path):
+        """Es lo que exige DailySalesRecordAssembler para saber si hubo
+        quiebre; sin eso descarta el producto entero."""
+        self._con_dias(tmp_path, ["2026-09-07"], ["2026-09-06"])
+
+        _, _, utiles = dias_utiles(tmp_path)
+
+        assert utiles == {"2026-09-07"}
+
+    def test_dias_que_no_se_cruzan_no_sirven(self, tmp_path):
+        self._con_dias(tmp_path, ["2026-07-25"], ["2026-09-06"])
+
+        dias_venta, dias_stock, utiles = dias_utiles(tmp_path)
+
+        assert dias_venta and dias_stock
+        assert utiles == set()
+
+    def test_el_resultado_lo_dice_en_vez_de_cantar_victoria(self, tmp_path, catalogo_completo):
+        """Sin esto el comando diría COMPLETO Y CONSISTENTE y el backend
+        arrancaría con las pantallas vacías."""
+        self._con_dias(catalogo_completo, ["2026-07-25"], ["2026-09-06"])
+        desde = tmp_path / "export"
+        desde.mkdir()
+
+        resultado = migrar(desde, catalogo_completo, tmp_path / "sin-simulados", FECHA)
+
+        assert resultado.advertencias
+        assert not resultado.alcanza_para_calcular
+        assert "ningún día de venta tiene un snapshot" in resultado.resumen()
+
+    def test_con_historia_de_sobra_no_advierte(self, tmp_path):
+        dias = [f"2026-0{m}-{d:02d}" for m in (1, 2) for d in range(1, 21)]
+        self._con_dias(tmp_path, [f"2026-03-{d:02d}" for d in range(2, 32)],
+                       [f"2026-03-{d:02d}" for d in range(1, 32)])
+
+        _, _, utiles = dias_utiles(tmp_path)
+
+        assert len(utiles) >= DIAS_DE_HISTORIA_RAZONABLE

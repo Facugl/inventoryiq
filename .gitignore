@@ -81,3 +81,6 @@ data/real-export/
 # por eso el catálogo real va a una carpeta aparte y el backend se apunta ahí
 # con INVENTORYIQ_CSV_BASE_PATH.
 data/csv-real/
+
+# La correspondencia de sucursales lleva los nombres reales del negocio.
+sucursales.json

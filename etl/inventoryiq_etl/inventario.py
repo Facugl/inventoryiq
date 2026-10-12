@@ -5,10 +5,12 @@ Mapeo y decisiones en `docs/InventoryIQ_ETL_Catalogo.md`, secciones 3.4 y 4.1.
 El origen es HTML con extensión .xls (ver `fuentes.leer_tabla_html`).
 """
 
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 
-from . import decisiones
+from . import decisiones, encabezado, sucursales as sucursales_pos
+from .acumular import acumular, leer_existentes
+from .diarios import Export, Tipo, de_tipo, encontrar
 from .fuentes import escribir_csv_canonico, leer_tabla_html, parsear_entero
 from .reporte import Reporte
 
@@ -21,6 +23,8 @@ COLUMNAS_DESTINO = [
     "stock_en_transito",
 ]
 
+CLAVE = ("fecha_snapshot", "producto_id", "sucursal_id")
+
 COLUMNA_UNIDAD = "Unidad de Negocio"
 COLUMNA_BARRA = "Código Barra"
 COLUMNA_STOCK = "Stk.(U)"
@@ -30,6 +34,7 @@ COLUMNAS_ORIGEN = {COLUMNA_UNIDAD, COLUMNA_BARRA, COLUMNA_STOCK}
 def transformar(
     filas: list[dict[str, str]],
     fecha_snapshot: date,
+    sucursal_por_unidad: dict[str, str],
     productos_validos: set[str] | None = None,
 ) -> tuple[list[dict[str, str]], Reporte]:
     """Convierte las filas de stock del POS a snapshots de inventario.
@@ -57,7 +62,7 @@ def transformar(
             continue
 
         unidad = fila[COLUMNA_UNIDAD].strip()
-        sucursal_id = decisiones.SUCURSAL_POR_UNIDAD_DE_NEGOCIO.get(unidad)
+        sucursal_id = sucursal_por_unidad.get(unidad)
         if sucursal_id is None:
             reporte.descartar(numero, "unidad de negocio desconocida", repr(unidad))
             continue
@@ -108,19 +113,74 @@ def convertir(
     destino: Path,
     fecha_snapshot: date | None = None,
     productos_validos: set[str] | None = None,
+    export: Path | None = None,
 ) -> Reporte:
-    # El export no lleva su fecha adentro: no hay ninguna en el documento. Se
-    # cae a la fecha de modificación del archivo, que es una aproximación, y
-    # por eso el reporte la deja asentada en vez de usarla en silencio.
-    if fecha_snapshot is None:
-        fecha_snapshot = datetime.fromtimestamp(origen.stat().st_mtime).date()
-        origen_fecha = "fecha de modificación del archivo"
+    """Acumula en `destino` los snapshots de todos los exports de stock.
+
+    `origen` puede ser un export suelto o la carpeta de exports diarios. El
+    archivo no se regenera: cada corrida agrega los días que falten y conserva
+    los que ya estaban, porque el stock no se puede volver a pedir hacia atrás
+    y porque el conteo manual de la pantalla de Administración escribe en este
+    mismo archivo (ver `acumular`).
+    """
+    # Por defecto, al lado del export. Explícito para que un test no escriba
+    # dentro del repositorio: el archivo lleva los nombres reales.
+    export = export or (origen if origen.is_dir() else origen.parent)
+
+    if origen.is_dir():
+        fuentes = de_tipo(encontrar(origen), Tipo.STOCK)
     else:
-        origen_fecha = "indicada por quien ejecuta"
+        fuentes = [Export(origen, Tipo.STOCK, encabezado.leer(origen))]
 
-    filas = leer_tabla_html(origen)
-    destino_filas, reporte = transformar(filas, fecha_snapshot, productos_validos)
-    reporte.ajustar(0, f"fecha_snapshot = {fecha_snapshot.isoformat()}", origen_fecha)
+    # La correspondencia con las sucursales no está en el código: son los
+    # nombres reales del negocio y el repositorio es público. Si todavía no se
+    # armó, se deriva por volumen (Sección 5.2) y se deja escrita para que se
+    # pueda revisar, en vez de decidirlo en silencio en cada corrida.
+    sucursal_por_unidad = sucursales_pos.cargar(export)
+    origen_correspondencia = f"leída de {sucursales_pos.ARCHIVO}"
+    if sucursal_por_unidad is None and fuentes:
+        sucursal_por_unidad = sucursales_pos.derivar_por_volumen(
+            [f.get(COLUMNA_UNIDAD, "") for f in leer_tabla_html(fuentes[0].ruta)]
+        )
+        ruta = sucursales_pos.guardar(export, sucursal_por_unidad)
+        origen_correspondencia = f"derivada por volumen y guardada en {ruta.name}"
 
-    escribir_csv_canonico(destino, COLUMNAS_DESTINO, destino_filas)
+    reporte = Reporte(entidad="inventario")
+    acumuladas: list[dict[str, str]] = []
+    fechas: list[str] = []
+
+    for fuente in sorted(fuentes, key=lambda e: e.nombre):
+        # La fecha sale del pie del propio export, no del `mtime`: copiar un
+        # archivo le cambia la fecha de modificación, y un snapshot atribuido
+        # al día equivocado no falla, recomienda mal.
+        fecha = fecha_snapshot or fuente.metadatos.generado
+        if fecha is None:
+            reporte.descartar(0, "el export no dice de qué día es", fuente.nombre)
+            continue
+
+        filas = leer_tabla_html(fuente.ruta)
+        reporte.leidas += len(filas)
+        del_dia, parcial = transformar(
+            filas, fecha, sucursal_por_unidad or {}, productos_validos
+        )
+        reporte.descartes += parcial.descartes
+        reporte.ajustes += parcial.ajustes
+        acumuladas += del_dia
+        fechas.append(fecha.isoformat())
+
+    if fechas:
+        reporte.ajustar(0, f"snapshots de {len(set(fechas))} día(s)",
+                        ", ".join(sorted(set(fechas))))
+    reporte.ajustar(0, "correspondencia de sucursales", origen_correspondencia)
+
+    todas = acumular(
+        leer_existentes(destino), acumuladas, CLAVE, "inventario_id", reporte
+    )
+    reporte.emitidas = len(todas)
+
+    # Un archivo vacío no es lo mismo que un archivo que falta: con cabecera y
+    # sin filas, la verificación de integridad lo da por presente y el catálogo
+    # parece cerrar. Si no hay ni una fila, mejor que no exista y se reporte.
+    if todas:
+        escribir_csv_canonico(destino, COLUMNAS_DESTINO, todas)
     return reporte

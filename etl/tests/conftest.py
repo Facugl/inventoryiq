@@ -55,6 +55,26 @@ def fixture_precios() -> Path:
 
 
 @pytest.fixture
+def fixture_listado_dia() -> Path:
+    """Un listado de ventas exportado con `desde = hasta`: el único que sirve
+    como venta diaria."""
+    return FIXTURES / "listado_ventas_dia.xls"
+
+
+@pytest.fixture
+def carpeta_diarios(tmp_path) -> Path:
+    """La carpeta donde se van dejando los exports del día.
+
+    En tmp_path y no en fixtures/ porque el ETL escribe ahí al lado (la
+    correspondencia de sucursales), y un test no debe tocar el repositorio.
+    """
+    carpeta = tmp_path / "diarios"
+    carpeta.mkdir()
+    shutil.copyfile(FIXTURES / "listado_ventas_dia.xls", carpeta / "ventas_dia.xls")
+    return carpeta
+
+
+@pytest.fixture
 def export_pos(tmp_path) -> Path:
     """Una carpeta de exports con los nombres de archivo que usa el POS.
 

@@ -15,10 +15,10 @@ los datos reales, eso falla antes de romper nada en vez de después.
 import csv
 import shutil
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
-from . import categorias, inventario, productos, proveedores
+from . import categorias, inventario, productos, proveedores, ventas
 from .reporte import Reporte
 
 # Los seis que leen los adaptadores (ver adapters/out/csv/*.FILE_NAME).
@@ -41,15 +41,23 @@ ENTIDADES_MIGRADAS = {
     "categorias": (categorias.convertir, "categorias_xrp.csv", "categorias.csv"),
     "proveedores": (proveedores.convertir, "Mantenimiento_de_Proveedores_.csv", "proveedores.csv"),
     "productos": (productos.convertir, "Cambio_de_precios_xrp.csv", "productos.csv"),
-    "inventario": (inventario.convertir, "Consulta_de_stock_xrp.xls", "inventario.csv"),
+    # Estas dos no leen un archivo sino la carpeta entera: acumulan un día por
+    # cada export que encuentren, y crecen con cada corrida (ver `acumular`).
+    "inventario": (inventario.convertir, None, "inventario.csv"),
+    "ventas": (ventas.convertir, None, "ventas.csv"),
 }
 
-# Lo que todavía no sale del POS y se arrastra del dataset simulado.
+# Lo que no sale del POS y se arrastra del dataset simulado.
 #   - sucursales.csv: decisión del usuario, se siguen usando los nombres
 #     simulados (Sección 5.2 del documento).
-#   - ventas.csv: no hay export diario de ventas. Es el hueco más grande:
-#     las ventas alimentan el ADS, y de ahí sale toda la recomendación.
-ARCHIVOS_ARRASTRADOS = ["sucursales.csv", "ventas.csv"]
+#   - ventas.csv NO se arrastra, aunque todavía no haya listados diarios de
+#     los que sacarlo. Antes sí: era un stopgap mientras la entidad no tenía
+#     fuente. Ahora sería peor que inútil, porque ventas.csv se ACUMULA: las
+#     ventas simuladas quedarían en el archivo como si fueran reales y la
+#     corrida siguiente las tomaría por datos ya cargados. Sin listados, el
+#     archivo no existe y el comando lo reporta como faltante, que es la
+#     verdad.
+ARCHIVOS_ARRASTRADOS = ["sucursales.csv"]
 
 
 def _columna(ruta: Path, columna: str) -> list[str]:
@@ -96,6 +104,38 @@ class Violacion:
         )
 
 
+# Días de historia a partir de los cuales el ADS deja de ser anecdótico. No es
+# un umbral del dominio —que calcula con lo que haya— sino el punto en que vale
+# la pena mirar los números.
+DIAS_DE_HISTORIA_RAZONABLE = 30
+
+
+def dias_utiles(carpeta: Path) -> tuple[set[str], set[str], set[str]]:
+    """Días de venta, días de snapshot, y los días de venta que sirven.
+
+    Un día de venta sólo entra al ADS corregido si existe un snapshot del día
+    ANTERIOR: es lo que permite saber si el producto estuvo en quiebre
+    (`DailySalesRecordAssembler`). Sin eso, el producto se descarta entero.
+
+    Por eso no alcanza con contar días de cada cosa: hay que cruzarlos.
+    """
+    ventas_csv, inventario_csv = carpeta / "ventas.csv", carpeta / "inventario.csv"
+    if not (ventas_csv.is_file() and inventario_csv.is_file()):
+        return set(), set(), set()
+
+    dias_venta = {d for d in _columna(ventas_csv, "fecha") if d}
+    dias_stock = {d for d in _columna(inventario_csv, "fecha_snapshot") if d}
+
+    siguiente = set()
+    for dia in dias_stock:
+        try:
+            siguiente.add((date.fromisoformat(dia) + timedelta(days=1)).isoformat())
+        except ValueError:
+            continue
+
+    return dias_venta, dias_stock, dias_venta & siguiente
+
+
 @dataclass
 class ResultadoMigracion:
     destino: Path
@@ -103,11 +143,17 @@ class ResultadoMigracion:
     arrastrados: list[str] = field(default_factory=list)
     faltantes: list[str] = field(default_factory=list)
     violaciones: list[Violacion] = field(default_factory=list)
+    advertencias: list[str] = field(default_factory=list)
 
     @property
     def sirve(self) -> bool:
         """¿El backend podría arrancar con este conjunto?"""
         return not self.faltantes and not self.violaciones
+
+    @property
+    def alcanza_para_calcular(self) -> bool:
+        """Distinto de `sirve`: el catálogo puede cerrar y no servir para nada."""
+        return not self.advertencias
 
     def resumen(self) -> str:
         lineas = [r.resumen() for r in self.reportes]
@@ -123,10 +169,15 @@ class ResultadoMigracion:
         if self.violaciones:
             lineas.append("INTEGRIDAD REFERENCIAL ROTA:")
             lineas += [f"  - {v}" for v in self.violaciones]
-        lineas.append(
-            "CATÁLOGO COMPLETO Y CONSISTENTE" if self.sirve
-            else "CATÁLOGO NO UTILIZABLE todavía (ver arriba)"
-        )
+        if self.advertencias:
+            lineas.append("HISTORIAL INSUFICIENTE PARA CALCULAR:")
+            lineas += [f"  - {a}" for a in self.advertencias]
+        if not self.sirve:
+            lineas.append("CATÁLOGO NO UTILIZABLE todavía (ver arriba)")
+        elif self.advertencias:
+            lineas.append("CATÁLOGO CONSISTENTE, PERO SIN HISTORIAL SUFICIENTE")
+        else:
+            lineas.append("CATÁLOGO COMPLETO Y CONSISTENTE")
         return "\n".join(lineas)
 
 
@@ -168,33 +219,68 @@ def migrar(
     destino.mkdir(parents=True, exist_ok=True)
     resultado = ResultadoMigracion(destino=destino)
 
+    migrados: set[str] = set()
+
     for nombre, (convertir, origen, salida) in ENTIDADES_MIGRADAS.items():
-        ruta_origen = desde / origen
-        if not ruta_origen.is_file():
+        ruta_origen = desde / origen if origen else desde
+        if not (ruta_origen.is_file() or ruta_origen.is_dir()):
             reporte = Reporte(entidad=nombre)
             reporte.descartar(0, "no está el export de origen", str(ruta_origen))
             resultado.reportes.append(reporte)
             continue
 
         extra: dict = {}
-        if nombre == "inventario":
-            extra["fecha_snapshot"] = fecha_snapshot
-            # El export de stock tiene códigos de barra que no están en el de
-            # precios, así que hay stock de productos que no van a existir en
-            # el catálogo. Pasarle los ids válidos hace que los descarte con
-            # su motivo, en vez de dejarlos como referencia colgada para que
-            # los encuentre la verificación de más abajo.
+        if nombre in ("inventario", "ventas"):
+            # Los exports de stock y de ventas tienen códigos de barra que no
+            # están en el de precios, así que hay filas de productos que no van
+            # a existir en el catálogo. Pasarle los ids válidos hace que las
+            # descarte con su motivo, en vez de dejarlas como referencia
+            # colgada para que las encuentre la verificación de más abajo.
             catalogo_productos = destino / "productos.csv"
             if catalogo_productos.is_file():
                 extra["productos_validos"] = set(_columna(catalogo_productos, "producto_id"))
+        if nombre == "inventario":
+            extra["fecha_snapshot"] = fecha_snapshot
 
-        resultado.reportes.append(convertir(ruta_origen, destino / salida, **extra))
+        reporte = convertir(ruta_origen, destino / salida, **extra)
+        resultado.reportes.append(reporte)
+        if reporte.emitidas:
+            migrados.add(salida)
 
     for nombre in ARCHIVOS_ARRASTRADOS:
+        if nombre in migrados:
+            continue  # salió del POS, no hay nada que arrastrar
         origen = simulados / nombre
-        if origen.is_file():
+        if origen.is_file() and origen.resolve() != (destino / nombre).resolve():
             shutil.copyfile(origen, destino / nombre)
             resultado.arrastrados.append(nombre)
 
     resultado.faltantes, resultado.violaciones = verificar_integridad(destino)
+    resultado.advertencias = _advertencias_de_historial(destino)
     return resultado
+
+
+def _advertencias_de_historial(carpeta: Path) -> list[str]:
+    """Lo que la integridad referencial no ve: que no haya con qué calcular.
+
+    Un catálogo puede cerrar perfectamente y no servir para nada. Sin esto, el
+    comando diría "COMPLETO Y CONSISTENTE" y las pantallas saldrían vacías sin
+    que nada explique por qué.
+    """
+    dias_venta, dias_stock, utiles = dias_utiles(carpeta)
+    if not dias_venta and not dias_stock:
+        return []
+
+    if not utiles:
+        return [
+            f"ningún día de venta tiene un snapshot del día anterior "
+            f"({len(dias_venta)} día(s) de venta, {len(dias_stock)} de stock). "
+            "El ADS corregido descarta TODOS los productos: el backend "
+            "arrancaría y las pantallas saldrían vacías"
+        ]
+    if len(utiles) < DIAS_DE_HISTORIA_RAZONABLE:
+        return [
+            f"sólo {len(utiles)} día(s) de venta tienen snapshot del día "
+            "anterior. El ADS se calcula, pero sobre muy poca historia"
+        ]
+    return []

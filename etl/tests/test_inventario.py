@@ -8,9 +8,15 @@ from inventoryiq_etl.inventario import COLUMNAS_DESTINO, convertir, transformar
 
 FECHA = date(2026, 9, 6)
 
+# Los nombres del fixture son inventados, igual que los de `sucursales.csv`:
+# los reales son de un negocio concreto y el repositorio es público.
+SUCURSALES = {"Depósito Las Lomas": "1", "Sucursal Rivadavia": "2"}
 
-def transformar_fixture(ruta, **kwargs):
-    return transformar(leer_tabla_html(ruta), FECHA, **kwargs)
+
+def transformar_fixture(ruta, sucursales=None, **kwargs):
+    return transformar(
+        leer_tabla_html(ruta), FECHA, sucursales or SUCURSALES, **kwargs
+    )
 
 
 def por_clave(destino):
@@ -29,7 +35,7 @@ class TestLecturaDelHtml:
         """El POS une dos filas de header en una, con celdas vacías de más."""
         filas = leer_tabla_html(fixture_stock)
 
-        assert filas[0]["Unidad de Negocio"] == "Administración Central Alem"
+        assert filas[0]["Unidad de Negocio"] == "Depósito Las Lomas"
         assert filas[0]["Código Barra"] == "7790000000001"
 
 
@@ -121,21 +127,25 @@ class TestIntegridadReferencial:
 
 
 class TestEscritura:
-    def test_deja_asentada_la_fecha_que_uso_y_de_donde_salio(self, fixture_stock, tmp_path):
-        """El export no lleva fecha adentro: la que se use tiene que constar."""
-        reporte = convertir(fixture_stock, tmp_path / "inventario.csv", fecha_snapshot=FECHA)
+    def test_la_fecha_sale_del_pie_del_export(self, fixture_stock, tmp_path):
+        """Y no del `mtime`: copiar un archivo se lo cambia, y un snapshot
+        atribuido al día equivocado no falla, recomienda mal."""
+        reporte = convertir(fixture_stock, tmp_path / "inventario.csv", export=tmp_path)
+        filas = csv.DictReader((tmp_path / "inventario.csv").open(encoding="utf-8"))
 
-        assert any("fecha_snapshot = 2026-09-06" in i.motivo for i in reporte.ajustes)
+        assert {f["fecha_snapshot"] for f in filas} == {"2026-09-06"}
+        assert any("snapshots de 1 día" in i.motivo for i in reporte.ajustes)
 
-    def test_cae_a_la_fecha_del_archivo_si_no_se_indica(self, fixture_stock, tmp_path):
-        reporte = convertir(fixture_stock, tmp_path / "inventario.csv")
+    def test_deja_asentada_la_fecha_que_uso(self, fixture_stock, tmp_path):
+        reporte = convertir(fixture_stock, tmp_path / "inventario.csv", fecha_snapshot=FECHA,
+                            export=tmp_path)
 
-        assert any("fecha de modificación" in i.detalle for i in reporte.ajustes)
+        assert any("2026-09-06" in i.detalle for i in reporte.ajustes)
 
     def test_escribe_un_csv_que_el_backend_puede_leer(self, fixture_stock, tmp_path):
         salida = tmp_path / "inventario.csv"
 
-        reporte = convertir(fixture_stock, salida, fecha_snapshot=FECHA)
+        reporte = convertir(fixture_stock, salida, fecha_snapshot=FECHA, export=tmp_path)
 
         contenido = salida.read_text(encoding="utf-8")
         assert contenido.startswith(",".join(COLUMNAS_DESTINO))
@@ -143,3 +153,72 @@ class TestEscritura:
 
         leidas = list(csv.DictReader(salida.open(encoding="utf-8")))
         assert len(leidas) == reporte.emitidas
+
+
+class TestAcumulacion:
+    """El stock no se puede pedir hacia atrás: cada export es un día que no se
+    recupera, así que el archivo se acumula en vez de regenerarse."""
+
+    def _export_con_fecha(self, carpeta, fixture_stock, nombre, dia, mes_largo, anio):
+        crudo = fixture_stock.read_text(encoding="cp1252")
+        crudo = crudo.replace("Domingo 6 de Septiembre de 2026",
+                              f"Lunes {dia} de {mes_largo} de {anio}")
+        (carpeta / nombre).write_text(crudo, encoding="cp1252")
+
+    def test_suma_un_dia_por_cada_export(self, fixture_stock, tmp_path):
+        diarios = tmp_path / "diarios"
+        diarios.mkdir()
+        self._export_con_fecha(diarios, fixture_stock, "a.xls", 6, "Septiembre", 2026)
+        self._export_con_fecha(diarios, fixture_stock, "b.xls", 7, "Septiembre", 2026)
+        salida = tmp_path / "inventario.csv"
+
+        convertir(diarios, salida, export=tmp_path)
+        filas = list(csv.DictReader(salida.open(encoding="utf-8")))
+
+        assert {f["fecha_snapshot"] for f in filas} == {"2026-09-06", "2026-09-07"}
+
+    def test_conserva_los_dias_viejos_aunque_su_export_ya_no_este(
+        self, fixture_stock, tmp_path
+    ):
+        diarios = tmp_path / "diarios"
+        diarios.mkdir()
+        self._export_con_fecha(diarios, fixture_stock, "a.xls", 6, "Septiembre", 2026)
+        salida = tmp_path / "inventario.csv"
+        convertir(diarios, salida, export=tmp_path)
+
+        (diarios / "a.xls").unlink()
+        self._export_con_fecha(diarios, fixture_stock, "b.xls", 7, "Septiembre", 2026)
+        convertir(diarios, salida, export=tmp_path)
+        filas = list(csv.DictReader(salida.open(encoding="utf-8")))
+
+        assert {f["fecha_snapshot"] for f in filas} == {"2026-09-06", "2026-09-07"}
+
+    def test_no_pisa_el_conteo_manual_de_la_aplicacion(self, fixture_stock, tmp_path):
+        """La pantalla de Administración agrega a este mismo archivo
+        (`CsvInventoryRepositoryAdapter.appendToFile`): regenerarlo borraría
+        las correcciones hechas a mano."""
+        diarios = tmp_path / "diarios"
+        diarios.mkdir()
+        self._export_con_fecha(diarios, fixture_stock, "a.xls", 6, "Septiembre", 2026)
+        salida = tmp_path / "inventario.csv"
+        convertir(diarios, salida, export=tmp_path)
+        with salida.open("a", encoding="utf-8", newline="") as fh:
+            fh.write("999,2026-09-20,7790000000777,1,42,0\n")
+
+        convertir(diarios, salida, export=tmp_path)
+        filas = list(csv.DictReader(salida.open(encoding="utf-8")))
+
+        a_mano = [f for f in filas if f["producto_id"] == "7790000000777"]
+        assert len(a_mano) == 1
+        assert a_mano[0]["stock_actual"] == "42"
+
+    def test_el_export_sin_fecha_se_descarta_en_vez_de_adivinar(self, tmp_path):
+        diarios = tmp_path / "diarios"
+        diarios.mkdir()
+        (diarios / "sin_pie.xls").write_text(
+            "<table><tr><td>Unidad de Negocio</td></tr></table>", encoding="cp1252"
+        )
+
+        reporte = convertir(diarios, tmp_path / "inventario.csv", export=tmp_path)
+
+        assert any("no dice de qué día es" in i.motivo for i in reporte.descartes)

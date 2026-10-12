@@ -69,7 +69,12 @@ def main(argv: list[str] | None = None) -> int:
     print(resultado.resumen())
     print(f"\ndestino: {resultado.destino}")
 
-    if resultado.sirve:
+    if resultado.sirve and not resultado.alcanza_para_calcular:
+        print()
+        print("El catálogo cierra, pero todavía no hay con qué calcular: el")
+        print("backend arrancaría y las pantallas saldrían vacías. Hace falta")
+        print("acumular más días de stock y de ventas (ver etl/README.md).")
+    elif resultado.sirve:
         print("\nPara levantar el backend contra este catálogo:")
         print(f"  INVENTORYIQ_CSV_BASE_PATH={resultado.destino}")
     else:
