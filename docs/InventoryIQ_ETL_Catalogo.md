@@ -7,8 +7,13 @@ código. Las cinco entidades están implementadas (`etl/`): **categorías**,
 
 El catálogo todavía **no es utilizable**, pero ya no por falta de código: falta
 **historia**. El stock y las ventas se acumulan día a día a partir de exports
-periódicos, y hoy hay un día de cada uno. La Sección 5.3 explica por qué no se
-puede recuperar hacia atrás y cuál es la rutina.
+periódicos, y hoy hay un día de cada uno. La Sección 5.3 explica por qué el
+inventario no se puede recuperar hacia atrás.
+
+**El proyecto está pausado en ese punto, a propósito** — construir ese
+historial exige un export manual diario y sostenido. Ver "Dónde se detuvo" en
+`InventoryIQ_Roadmap.md` para el estado exacto y los dos caminos para
+retomarlo.
 
 Relevamiento hecho el 2026-10-10 sobre los exports en `data/real-export/`
 (carpeta ignorada por git, ver `.gitignore`), ampliado el 2026-10-11 con el

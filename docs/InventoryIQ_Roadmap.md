@@ -214,10 +214,77 @@ Los próximos pasos concretos, en orden de valor para el uso real del sistema:
    las pantallas vacías. Ver Sección 5.3 de
    `docs/InventoryIQ_ETL_Catalogo.md`.
 
-   **El próximo paso es operativo, no de código:** exportar la consulta de
-   stock todos los días y dejarla en `data/real-export/diarios/`. La rutina
-   está en `etl/README.md`.
+   El próximo paso sería operativo, no de código: exportar la consulta de stock
+   todos los días y dejarla en `data/real-export/diarios/`. Ver más abajo —
+   **ahí se detuvo el proyecto**.
 2. **README de arranque rápido** en la raíz del repo — **completado** (ver Fase 6).
 3. Recién después, evaluar si conviene avanzar hacia v1.1/v1.2 (alertas configurables,
    multi-sucursal) o directamente hacia v2.0 (ETL real + Data Warehouse), según qué
    tan bien funcione el MVP con datos reales.
+
+---
+
+## Dónde se detuvo (2026-10-12)
+
+**El proyecto está pausado a propósito, en un punto conocido.** No quedó a
+mitad de una tarea: todo lo implementado está terminado, testeado y
+documentado, y el repositorio queda consistente.
+
+### Qué funciona hoy
+
+- El MVP completo corriendo con el dataset simulado — 9 pantallas, 19 casos de
+  uso, desplegado en Render. Nada de esto depende del ETL.
+- El pipeline ETL con las **cinco entidades** implementadas, que sobre los
+  exports reales produce un catálogo íntegro: 10.283 productos, 267 categorías,
+  63 proveedores, 7.173 filas de inventario y 343 ventas. 124 tests en verde.
+
+### Por qué se detuvo ahí
+
+El catálogo real cierra pero **no se puede usar todavía**, y no por falta de
+código. El sistema calcula sobre dos series diarias —ventas e inventario— y el
+POS no guarda ninguna de las dos:
+
+| | ¿Se puede recuperar hacia atrás? |
+|---|---|
+| Ventas | **Sí**, el reporte acepta rango de fechas |
+| Inventario | **No**, el export es "stock actual": un export, un día |
+
+Construir el historial de inventario exige exportar el stock **todos los días,
+a mano, indefinidamente**. Para una sola persona eso no es sostenible, y un
+sistema que depende de esa disciplina tiene un problema de diseño, no de
+voluntad. Por eso se decidió parar acá en vez de empezar una rutina que se iba
+a abandonar.
+
+### Para retomarlo, dos caminos
+
+**A — Acumular (sin tocar código).** Empezar a dejar el export de stock en
+`data/real-export/diarios/` todos los días, a la misma hora. Las ventas se
+recuperan después con el reporte exportado con `desde = hasta`. Con ~2 semanas
+hay un ADS defendible; con ~90 días funciona todo lo diseñado (XYZ,
+estacionalidad, forecast). `migrar` avisa cuando todavía no alcanza.
+
+Nada se pierde por esperar: retomar simplemente arranca el contador desde ese
+día. Lo único irrecuperable son los días que pasen sin exportar.
+
+**B — Degradar el cálculo (tocando el backend).** Hacer que
+`ProductIndicatorsCalculator` caiga a `AdsCalculator.calculateSimpleAds` cuando
+no hay snapshots suficientes, en vez de descartar el producto. Eso desacopla el
+sistema del historial de inventario y lo deja funcionar **sólo con ventas**,
+que sí se pueden traer hacia atrás: unos 60-90 exports a mano y hay
+recomendaciones sobre datos reales en una tarde.
+
+Lo que cuesta, y conviene tenerlo presente antes de empezar:
+
+- Hay que aplicarlo en cuatro lugares, no uno: `ProductIndicatorsCalculator`,
+  `ClassifyProductsService` (XYZ), `ForecastDemandService` y
+  `SeasonalityCalculator`.
+- `calculateSimpleAds` es suma/cantidad de elementos: hay que armar la ventana
+  completa rellenando ceros. Pasarle sólo los días con venta multiplica el ADS
+  por decenas y el error no falla, recomienda mal.
+- Se pierde la corrección por quiebres, que **subestima la demanda justo en los
+  productos que se agotan** — los que la herramienta existe para detectar.
+- La UI tendría que distinguir un ADS corregido de uno que no lo está, o sería
+  la degradación silenciosa que el proyecto evita en todo lo demás.
+
+El análisis completo de los dos caminos está en la Sección 5.3 de
+`docs/InventoryIQ_ETL_Catalogo.md`.

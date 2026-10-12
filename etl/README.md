@@ -17,7 +17,10 @@ campo están en [`../docs/InventoryIQ_ETL_Catalogo.md`](../docs/InventoryIQ_ETL_
 | `ventas.csv` | implementado — del reporte de ventas exportado con `desde = hasta`, uno por día y sucursal |
 
 Lo que falta no es código: es **historia**. El sistema calcula sobre series
-diarias, y hoy hay un día de cada una. Ver "La rutina diaria".
+diarias, y hoy hay un día de cada una — por eso el catálogo real cierra pero
+todavía no sirve para calcular. El proyecto está pausado ahí a propósito; el
+porqué y los dos caminos para retomarlo están en "Dónde se detuvo", en
+[`../docs/InventoryIQ_Roadmap.md`](../docs/InventoryIQ_Roadmap.md).
 
 ## Uso
 
@@ -48,7 +51,13 @@ Eso no es decorativo: varias decisiones del pipeline modifican filas (por
 ejemplo, el stock negativo pasa a 0), y un ajuste silencioso sobre miles de
 filas sería inaceptable.
 
-## La rutina diaria
+## La rutina diaria — no está en curso
+
+> **El proyecto está pausado** (ver "Dónde se detuvo" en
+> `../docs/InventoryIQ_Roadmap.md`). Esta sección describe lo que habría que
+> hacer **si alguna vez se retoma**, no algo que esté pasando. El pipeline está
+> implementado y testeado; lo que falta es la historia que esta rutina
+> construiría.
 
 El sistema necesita historia que el POS no guarda, y hay una asimetría que
 define todo lo demás:

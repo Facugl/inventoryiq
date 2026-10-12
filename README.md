@@ -93,6 +93,13 @@ existe nunca más. Las ventas sí se pueden recuperar después.
 cuando todavía no hay con qué calcular, en vez de dejarte apuntar el backend a
 algo que arrancaría con las pantallas vacías.
 
+**El proyecto está pausado en ese punto, a propósito.** El pipeline está
+terminado; lo que falta es acumular historia, y eso exige un export manual
+diario sostenido en el tiempo. El estado exacto y los dos caminos para
+retomarlo están en "Dónde se detuvo", en
+[`docs/InventoryIQ_Roadmap.md`](docs/InventoryIQ_Roadmap.md). Nada de esto
+afecta al sistema con el dataset simulado, que funciona completo.
+
 La rutina está en [`etl/README.md`](etl/README.md) y el detalle campo por campo
 en [`docs/InventoryIQ_ETL_Catalogo.md`](docs/InventoryIQ_ETL_Catalogo.md).
 
