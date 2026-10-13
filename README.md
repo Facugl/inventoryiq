@@ -13,7 +13,14 @@ efectivamente implementado (auditado contra el código).
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (incluye Docker Compose).
 
-No hace falta instalar Java, Node ni PostgreSQL por separado: todo corre en contenedores.
+No hace falta instalar Java, Node ni PostgreSQL por separado: la aplicación
+entera corre en contenedores.
+
+**Para el ETL sí hace falta Python 3.11 o superior**, porque no está
+contenerizado: es una herramienta de línea de comandos que se corre a mano
+sobre los exports del POS, no un servicio que tenga que estar levantado. No
+necesita nada más — no tiene dependencias de runtime, todo sale de la
+biblioteca estándar. Ver [`etl/README.md`](etl/README.md).
 
 ## Arranque rápido
 
@@ -171,11 +178,22 @@ correctamente, antes de probar las pantallas a mano:
 ## Desarrollo
 
 - **Backend:** Java 17 + Spring Boot, arquitectura hexagonal. Tests: `cd backend && ./mvnw test`.
-- **ETL:** Python, sin dependencias de runtime (todo de la biblioteca estándar).
-  Convierte los exports del POS al formato que leen los adaptadores CSV, sin
-  tocar el backend. Tests con pytest contra fixtures sintéticos — nunca contra
-  los exports reales, que traen datos de un negocio real y están fuera de git.
-  Ver [`etl/README.md`](etl/README.md).
+- **ETL:** Python 3.11+, sin dependencias de runtime (todo de la biblioteca
+  estándar). Convierte los exports del POS al formato que leen los adaptadores
+  CSV, sin tocar el backend. No está contenerizado: se corre a mano.
+
+  ```bash
+  cd etl
+  python -m venv .venv
+  .venv/Scripts/python -m pip install -e ".[dev]"   # Linux/Mac: .venv/bin/python
+  .venv/Scripts/python -m pytest
+  ```
+
+  Lo único que se instala es pytest. Los tests corren contra **fixtures
+  sintéticos**, nunca contra los exports reales: esos traen CUIT, costos y
+  márgenes de un negocio real y están fuera de git. Cada fila de un fixture
+  reproduce un defecto observado en los exports verdaderos. Ver
+  [`etl/README.md`](etl/README.md).
 - **Frontend:** React + TypeScript + Vite + MUI, con TanStack Query, react-hook-form y yup.
   Tests con Vitest + Testing Library: `cd frontend && pnpm test` (`pnpm test:watch` para desarrollo).
   Lint y build: `pnpm lint && pnpm build`.
